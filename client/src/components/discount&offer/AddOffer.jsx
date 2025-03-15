@@ -1,352 +1,270 @@
 import React, { useState } from "react";
 import Swal from "sweetalert2";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiArrowLeft, FiLoader } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import { MdLocalOffer } from "react-icons/md";
-import { BsPercent } from "react-icons/bs";
+import { BsPercent, BsCalendarDate, BsTag } from "react-icons/bs";
+import { TbDiscount } from "react-icons/tb";
+import { RiCoupon3Line } from "react-icons/ri";
 import ClipLoader from "react-spinners/ClipLoader";
+import API_CONFIG from "../../config/apiConfig.js";
 
-export default function AddOffer() {
-  const location = useLocation();
+function AddOffer() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    promotionName: "",
-    promotionCode: "",
-    description: "",
-    promotionType: "pDiscount",
+    promotionID: "",
+    type: "Discount Code", // Default value matches backend enum
+    discountValue: "",
+    validUntil: "",
     discountPercentage: "",
-    price: location.state?.price ?? 0,
-    itemName: location.state?.name ?? 0,
-    itemId: location.state?.id ?? 0,
-    finalPrice: "",
-    startDate: "",
-    endDate: "",
-    applicableProducts: "apparel",
-    usageLimit: "",
+    promoCode: "",
   });
-
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const calculateFinalPrice = (price, discountPercentage) => {
-    if (price && discountPercentage) {
-      return (price - (price * discountPercentage) / 100).toFixed(2);
-    }
-    return "";
-  };
-
-  const handleInputChange = (e) => {
+  // Handle form input changes with basic validation
+  const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Convert numeric fields to prevent string concatenation issues
+    const numericFields = ["promotionID", "discountValue", "discountPercentage", "promoCode"];
+    const newValue = numericFields.includes(name) ? value : value;
 
-    if (name === "discountPercentage" || name === "price") {
-      if (/^\d*$/.test(value)) {
-        const updatedFormData = { ...formData, [name]: value };
-        const finalPrice = calculateFinalPrice(
-          updatedFormData.price,
-          updatedFormData.discountPercentage
-        );
-        setFormData({ ...updatedFormData, finalPrice });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Invalid Input",
-          text: `${
-            name === "discountPercentage" ? "Discount Percentage" : "Price"
-          } should only contain numbers.`,
-        });
-      }
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
   };
 
+  // Handle form submission with improved error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); // Start loading
+    setLoading(true);
+    setError(null);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const startDate = new Date(formData.startDate);
-    const endDate = new Date(formData.endDate);
-
-    if (startDate < today) {
+    // Basic client-side validation
+    if (formData.discountPercentage < 0 || formData.discountPercentage > 100) {
+      setError("Discount percentage must be between 0 and 100");
       setLoading(false);
-      Swal.fire({
-        icon: "error",
-        title: "Invalid Date",
-        text: "Start date cannot be in the past.",
-      });
       return;
     }
 
-    if (endDate < today) {
+    if (formData.discountValue < 0) {
+      setError("Discount value cannot be negative");
       setLoading(false);
-      Swal.fire({
-        icon: "error",
-        title: "Invalid Date",
-        text: "End date cannot be in the past.",
-      });
       return;
     }
 
-    if (endDate < startDate) {
-      setLoading(false);
-      Swal.fire({
-        icon: "error",
-        title: "Invalid Date",
-        text: "End date cannot be before the start date.",
-      });
-      return;
-    }
+    try {
+      const promotionData = {
+        promotionID: Number(formData.promotionID),
+        type: formData.type,
+        discountValue: Number(formData.discountValue),
+        validUntil: new Date(formData.validUntil).toISOString(),
+        discountPercentage: Number(formData.discountPercentage),
+        promoCode: Number(formData.promoCode),
+      };
 
-    if (parseInt(formData.usageLimit, 10) <= 0) {
-      setLoading(false);
-      Swal.fire({
-        icon: "error",
-        title: "Validation Error",
-        text: "Usage Limit cannot be zero or negative.",
+      // Use API_CONFIG to construct the URL
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(promotionData),
       });
-      return;
-    }
 
-    const response = await fetch("/api/promotions", {
-      method: "POST",
-      body: JSON.stringify({
-        ...formData,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+      const result = await response.json();
 
-    const json = await response.json();
-    setLoading(false); // Stop loading
-
-    if (!response.ok) {
-      setError(json.error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: `${json.message}`,
-      });
-    } else {
-      setFormData({
-        promotionName: "",
-        promotionCode: "",
-        description: "",
-        promotionType: "pDiscount",
-        discountPercentage: "",
-        price: "",
-        finalPrice: "",
-        startDate: "",
-        endDate: "",
-        applicableProducts: "apparel",
-        usageLimit: "",
-      });
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to add promotion");
+      }
 
       Swal.fire({
         icon: "success",
-        title: "Success",
-        text: "Promotion added successfully",
+        title: "Success!",
+        text: "Promotion added successfully!",
+        confirmButtonColor: "#89198f",
+      }).then(() => {
+        navigate("/offers");
       });
-      navigate("/manager/discount-management?tab=discounts");
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: error.message,
+        confirmButtonColor: "#89198f",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <motion.div
-      className="p-8 pl-20 rounded-lg shadow-md "
-      style={{ backgroundColor: "#f5ebe0" }}
-      initial={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
     >
-      <motion.div
-        className="min-h-screen bg-gradient-to-r from-[#f5ebe0] to-[#e3d5ca] text-[#775c41] px-6 py-8 rounded-lg"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Header Section */}
-        <div className="flex  items-center mb-6">
-          {/* Back Button */}
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor">
+        {/* Header */}
+        <div className="flex items-center mb-8 border-b-2 border-SecondaryColor pb-4">
           <button
-            className="bg-DarkColor text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-ExtraDarkColor transition-colors"
             onClick={() => navigate(-1)}
+            className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
           >
-            <FiArrowLeft className="mr-2" />
+            <FiArrowLeft size={20} />
           </button>
-          <h2 className="text-3xl font-bold text-DarkColor ml-20">
-            Add New Offer for {formData.itemName}
-          </h2>
+          <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+            <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+              <MdLocalOffer className="text-DarkColor" size={24} />
+            </div>
+            Add New Offer
+          </h1>
         </div>
 
-        {/* Form Section */}
-        <motion.section
-          className="p-6 rounded-lg shadow-md w-11/12"
-          style={{ backgroundColor: "white" }}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Offer Name</label>
-                <div className="flex items-center mt-2 p-2 border rounded-lg">
-                  <MdLocalOffer className="mr-2 text-xl text-DarkColor" />
-                  <input
-                    type="text"
-                    className="w-full bg-transparent outline-none"
-                    placeholder="Enter offer name"
-                    name="promotionName"
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+              {error}
+            </div>
+          )}
 
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Offer Code</label>
-                <input
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="text"
-                  placeholder="Offer Code"
-                  name="promotionCode"
-                  onChange={handleInputChange}
-                />
-              </div>
+          {/* Promotion ID */}
+          <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="block text-DarkColor font-medium mb-2 flex items-center">
+              <BsTag className="mr-2" />
+              Promotion ID
+            </label>
+            <input
+              type="number"
+              name="promotionID"
+              value={formData.promotionID}
+              onChange={handleChange}
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+              placeholder="Enter unique promotion ID"
+              required
+              min="1"
+            />
+          </div>
 
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Description</label>
-                <textarea
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="textarea"
-                  placeholder="Description"
-                  name="description"
-                  onChange={handleInputChange}
-                />
-              </div>
+          {/* Type */}
+          <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="text-DarkColor font-medium mb-2 flex items-center">
+              <TbDiscount className="mr-2" size={20} />
+              Promotion Type
+            </label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
+              required
+            >
+              <option value="Discount Code">Discount Code</option>
+              <option value="Loyalty">Loyalty</option>
+            </select>
+          </div>
 
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Offer Type</label>
-                <select
-                  name="promotionType"
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  onChange={handleInputChange}
-                  value={formData.promotionType}
-                >
-                  <option value="pDiscount">Percentage Discount</option>
-                  <option value="BOGO">Buy One Get One Free</option>
-                  <option value="fShipping">Free Shipping</option>
-                  <option value="fGift">Free Gift</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">
-                  Discount Percentage
-                </label>
-                <div className="flex items-center mt-2 p-2 border rounded-lg">
-                  <BsPercent className="mr-2 text-xl text-DarkColor" />
-                  <input
-                    type="text"
-                    className="w-full bg-transparent outline-none"
-                    placeholder="Discount Percentage"
-                    name="discountPercentage"
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Price</label>
-                <input
-                  value={formData.price}
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="text"
-                  placeholder="Price"
-                  name="price"
-                  onChange={handleInputChange}
-                  readOnly={true}
-                />
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Final Price</label>
-                <input
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="text"
-                  placeholder="Final Price"
-                  name="finalPrice"
-                  value={formData.finalPrice}
-                  readOnly={true}
-                />
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Start Date</label>
-                <input
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="date"
-                  name="startDate"
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">End Date</label>
-                <input
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="date"
-                  name="endDate"
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">
-                  Applicable Products
-                </label>
-                <select
-                  name="applicableProducts"
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  onChange={handleInputChange}
-                  value={formData.applicableProducts}
-                >
-                  <option value="apparel">Apparel</option>
-                  <option value="outerwear">Outerwear</option>
-                  <option value="kidsclothing">Children's Clothing</option>
-                  <option value="formalwear">Formal Wear</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col mb-4">
-                <label className="text-xl font-semibold">Usage Limit</label>
-                <input
-                  className="mt-2 p-2 border rounded-lg bg-transparent"
-                  type="number"
-                  placeholder="Usage Limit"
-                  name="usageLimit"
-                  onChange={handleInputChange}
-                />
-              </div>
+          {/* Two column layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Discount Value */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="text-DarkColor font-medium mb-2 flex items-center">
+                <RiCoupon3Line className="mr-2" size={20} />
+                Discount Value
+              </label>
+              <input
+                type="number"
+                name="discountValue"
+                value={formData.discountValue}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter value"
+                required
+                min="0"
+                step="0.01"
+              />
             </div>
 
-            <button
-              type="submit"
-              className="bg-rose-400 p-3 rounded-lg px-8 font-bold text-xl flex items-center justify-center mt-4"
-            >
-              {loading ? <ClipLoader size={25} color="#fff" /> : "Add Offer"}
-            </button>
+            {/* Discount Percentage */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsPercent className="mr-2" size={20} />
+                Discount Percentage
+              </label>
+              <input
+                type="number"
+                name="discountPercentage"
+                value={formData.discountPercentage}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter percentage"
+                required
+                min="0"
+                max="100"
+                step="0.1"
+              />
+            </div>
+          </div>
 
-            {error && <div className="error text-red-500 mt-4">{error}</div>}
-          </form>
-        </motion.section>
-      </motion.div>
+          {/* Valid Until */}
+          <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="block text-DarkColor font-medium mb-2 flex items-center">
+              <BsCalendarDate className="mr-2" size={20} />
+              Valid Until
+            </label>
+            <input
+              type="date"
+              name="validUntil"
+              value={formData.validUntil}
+              onChange={handleChange}
+              min={new Date().toISOString().split("T")[0]} // Prevent past dates
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white"
+              required
+            />
+          </div>
+
+          {/* Promo Code */}
+          <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="block text-DarkColor font-medium mb-2 flex items-center">
+              <MdLocalOffer className="mr-2" size={20} />
+              Promo Code
+            </label>
+            <input
+              type="number"
+              name="promoCode"
+              value={formData.promoCode}
+              onChange={handleChange}
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+              placeholder="Enter promo code"
+              required
+              min="1"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-DarkColor text-white p-4 rounded-lg flex items-center justify-center hover:opacity-90 transition-all font-bold shadow-lg disabled:opacity-50"
+          >
+            {loading ? (
+              <ClipLoader color="#fff" size={24} className="mr-2" />
+            ) : (
+              <MdLocalOffer className="mr-2" size={24} />
+            )}
+            {loading ? "Adding Offer..." : "Add Offer"}
+          </button>
+        </form>
+      </div>
     </motion.div>
   );
 }
+
+export default AddOffer;

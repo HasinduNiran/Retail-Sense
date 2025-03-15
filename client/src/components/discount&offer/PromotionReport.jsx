@@ -1,106 +1,223 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import jspdf from "jspdf";
-import "jspdf-autotable";
-import { MdFileDownload } from "react-icons/md";
-//import moment from "moment";
-//import "../../assets/css/user/userList.css";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { FiArrowLeft, FiEdit, FiTrash2 } from "react-icons/fi";
+import { MdLocalOffer, MdAdd } from "react-icons/md";
+import ClipLoader from "react-spinners/ClipLoader";
+import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
+import Swal from "sweetalert2";
 
-export default function PromotionReport({ promotions }, { searchData }) {
-  //trains, which contains an array of train objects and searchData, which likely contains search parameters used to filter the train data
-  function generatePDF(promotions, searchData) {
-    const doc = new jspdf();
-    const tableColumn = [
-      "No",
-      "Promotion Name",
-      "Promotion Code",
-      "Promotion Type",
-      "Discount Percentage",
-      "Price",
-      "Final Price",
-      "Start Date",
-      "End Date",
-      "Applicable Products",
-      "Usage Limit",
-    ];
-    const tableRows = [];
+function PromotionReport() {
+  const navigate = useNavigate();
+  const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    promotions
-      .slice(0)
-      .reverse()
-      .map((promotion, index) => {
-        const data = [
-          index + 1,
-          promotion.promotionName,
-          promotion.promotionCode,
-          promotion.promotionType,
-          promotion.discountPercentage,
-          promotion.price,
-          promotion.finalPrice,
-          promotion.startDate,
-          promotion.endDate,
-          promotion.applicableProducts,
-          promotion.usageLimit,
-          //"$" + train.price,
-          //moment(packages.createdAt).format("MM/DD/YYYY h:mm A"),
-        ];
-        tableRows.push(data);
+  // Fetch promotions on component mount
+  useEffect(() => {
+    fetchPromotions();
+  }, []);
+
+  const fetchPromotions = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
-    const date = Date().split(" ");
-    const dateStr = date[1] + "-" + date[2] + "-" + date[3];
+      const result = await response.json();
 
-    doc.setFontSize(28).setFont("Mooli", "bold").setTextColor(65, 164, 255);
-    doc.text("FashioNexus", 80, 15);
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to fetch promotions");
+      }
 
-    doc.setFont("helvetica", "normal").setFontSize(20).setTextColor(0, 0, 0);
-    doc.text(`Promotion Details Report `, 75, 25);
+      setPromotions(result.data); // Assuming backend returns data in a 'data' field
+    } catch (err) {
+      setError(err.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: err.message,
+        confirmButtonColor: "#89198f",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    doc.setFont("times", "normal").setFontSize(15).setTextColor(100, 100, 100);
-    doc.text(`Report Generated Date: ${dateStr}`, 65, 35);
+  // Handle Delete
+  const handleDelete = async (promotionID) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#89198f",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}/${promotionID}`;
+          const response = await fetch(url, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-    doc
-      .setFont("courier", "normal")
-      .setFontSize(12)
-      .setTextColor(150, 150, 150);
-    doc.text("FashioNexus.co, Galle Road, Colombo, Sri lanka", 50, 45);
+          const result = await response.json();
 
-    doc
-      .setFont("courier", "normal")
-      .setFontSize(12)
-      .setTextColor(150, 150, 150);
-    doc.text(
-      "--------------------------------------------------------------------------------------------------",
-      0,
-      49
-    );
+          if (!response.ok) {
+            throw new Error(result.error || result.message || "Failed to delete promotion");
+          }
 
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 50,
-      styles: { fontSize: 8 },
-      headStyles: {
-        fillColor: [31, 41, 55],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-      },
+          setPromotions(promotions.filter((promo) => promo.promotionID !== promotionID));
+          Swal.fire({
+            icon: "success",
+            title: "Deleted!",
+            text: "Promotion has been deleted.",
+            confirmButtonColor: "#89198f",
+          });
+        } catch (err) {
+          Swal.fire({
+            icon: "error",
+            title: "Error!",
+            text: err.message,
+            confirmButtonColor: "#89198f",
+          });
+        }
+      }
     });
+  };
 
-    doc.save(`Promotion-Details-Report_${dateStr}.pdf`);
-  }
+  // Handle Edit Navigation
+  const handleEdit = (promotionID) => {
+    navigate(`/edit-promotion/${promotionID}`); // Adjust route as needed
+  };
+
+  // Handle Add Navigation
+  const handleAdd = () => {
+    navigate("/add-offer"); // Assuming this is your AddOffer route
+  };
+
   return (
-    <div>
-      <div className="grid md:grid-cols-2 gap-1 ">
-        <button
-          onClick={() => {
-            generatePDF(promotions, searchData);
-          }}
-          className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition duration-300 flex items-center gap-2"
-        >
-          <MdFileDownload /> Download Report
-        </button>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-4xl border-2 border-SecondaryColor">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 border-b-2 border-SecondaryColor pb-4">
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
+            >
+              <FiArrowLeft size={20} />
+            </button>
+            <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+              <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+                <MdLocalOffer className="text-DarkColor" size={24} />
+              </div>
+              Promotion Report
+            </h1>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
+          >
+            <MdAdd size={20} className="mr-1" />
+            Add New
+          </button>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <ClipLoader color="#89198f" size={50} />
+          </div>
+        ) : (
+          /* Promotions Table */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-DarkColor">
+              <thead className="bg-PrimaryColor text-DarkColor">
+                <tr>
+                  <th className="p-4 font-semibold">Promotion ID</th>
+                  <th className="p-4 font-semibold">Type</th>
+                  <th className="p-4 font-semibold">Discount Value</th>
+                  <th className="p-4 font-semibold">Discount %</th>
+                  <th className="p-4 font-semibold">Promo Code</th>
+                  <th className="p-4 font-semibold">Valid Until</th>
+                  <th className="p-4 font-semibold">Created Date</th>
+                  <th className="p-4 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promotions.length > 0 ? (
+                  promotions.map((promo) => (
+                    <tr
+                      key={promo.promotionID}
+                      className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
+                    >
+                      <td className="p-4">{promo.promotionID}</td>
+                      <td className="p-4">{promo.type}</td>
+                      <td className="p-4">{promo.discountValue}</td>
+                      <td className="p-4">{promo.discountPercentage}%</td>
+                      <td className="p-4">{promo.promoCode}</td>
+                      <td className="p-4">
+                        {new Date(promo.validUntil).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        {new Date(promo.promoCreatedDate).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(promo.promotionID)}
+                          className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
+                          title="Edit"
+                        >
+                          <FiEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(promo.promotionID)}
+                          className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                          title="Delete"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="p-4 text-center text-gray-500">
+                      No promotions found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }
+
+export default PromotionReport;

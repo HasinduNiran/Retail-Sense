@@ -4,10 +4,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        PrimaryColor: "#f5ebe0",
-        SecondaryColor: "#e3d5ca",
-        DarkColor: "#d4a373",
-        ExtraDarkColor: "#a98467",
+        PrimaryColor: "#fee8ff",
+        SecondaryColor: "#f8abfc",
+        DarkColor: "#89198f",
+        ExtraDarkColor: "#89198f",
       },
     },
   },
