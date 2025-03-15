@@ -11,6 +11,9 @@ import MyOrders from "./pages/order/Myorders";
 import Profile from "./pages/Profile";
 import PrivateCus from "./components/private/PrivateCus";
 
+// Promotion Route
+
+
 //dewni
 
 import UpdateInventory from "./pages/inventory/UpdateInventory";
@@ -18,6 +21,8 @@ import DeleteInventory from "./pages/inventory/DeleteInventory";
 
 //Shadini
 import AddOffer from "./components/discount&offer/AddOffer";
+import PromotionReport from "./components/discount&offer/PromotionReport";
+import UpdateOffer from "./components/discount&offer/UpdateOffer";
 
 export default function App() {
   return (
@@ -41,7 +46,9 @@ export default function App() {
           <Route path="/checkout" element={<Checkout />} />{" "}
         </Route>
         {/* Promotion Route */}
-        <Route path="/offers/create" element={<AddOffer />}></Route>
+        <Route path="/add-offer" element={<AddOffer />}></Route>
+        <Route path="/promotion-report" element={<PromotionReport />} />
+        <Route path="/edit-promotion/:id" element={<UpdateOffer />} />
         {/* <Route path="/update/:id" element={<UpdateOffer />}></Route> */}
         {/* <Route path="/update/:id* " element={<DeleteOffer />}></Route> */}
       </Routes>

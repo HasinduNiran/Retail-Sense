@@ -8,6 +8,7 @@ import { BsPercent, BsCalendarDate, BsTag } from "react-icons/bs";
 import { TbDiscount } from "react-icons/tb";
 import { RiCoupon3Line } from "react-icons/ri";
 import ClipLoader from "react-spinners/ClipLoader";
+import API_CONFIG from "../../config/apiConfig.js";
 
 function AddOffer() {
   const navigate = useNavigate();
@@ -65,7 +66,10 @@ function AddOffer() {
         promoCode: Number(formData.promoCode),
       };
 
-      const response = await fetch("http://localhost:3000/api/promotions", {
+      // Use API_CONFIG to construct the URL
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`;
+      
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
