@@ -56,26 +56,35 @@ function AddOffer() {
       return;
     }
 
-    try {
-      const promotionData = {
-        promotionID: Number(formData.promotionID),
-        type: formData.type,
-        discountValue: Number(formData.discountValue),
-        validUntil: new Date(formData.validUntil).toISOString(),
-        discountPercentage: Number(formData.discountPercentage),
-        promoCode: Number(formData.promoCode),
-      };
-
-      // Use API_CONFIG to construct the URL
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`;
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(promotionData),
+    if (endDate < startDate) {
+      setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Date",
+        text: "End date cannot be before the start date.",
       });
+      return;
+    }
+
+    if (parseInt(formData.usageLimit, 10) <= 0) {
+      setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Validation Error",
+        text: "Usage Limit cannot be zero or negative.",
+      });
+      return;
+    }
+
+    const response = await fetch("/api/promotions", {
+      method: "POST",
+      body: JSON.stringify({
+        ...formData,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
       const result = await response.json();
 
