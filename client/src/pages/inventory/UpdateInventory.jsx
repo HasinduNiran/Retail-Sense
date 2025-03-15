@@ -1,635 +1,425 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { FiArrowLeft } from "react-icons/fi";
+import { MdInventory } from "react-icons/md";
+import { BsTag } from "react-icons/bs";
+import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
-import { SketchPicker } from "react-color";
-import { useNavigate, useParams } from "react-router-dom"; // Make sure to use this hook for navigation
-import "tailwindcss/tailwind.css";
-import { MdDeleteForever } from "react-icons/md";
-import {
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
-import { app } from "../../firebase";
+import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 
-function UpdateInventory({ currentUser }) {
+function UpdateInventory() {
   const { id } = useParams();
-  console.log("id", id);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    inventoryID: "",
     ItemName: "",
-    Category: "Men's Clothing",
-    SKU: "",
+    Category: "",
+    reorderThreshold: "",
+    Quantity: "",
+    Location: "",
+    StockStatus: "in-stock",
+    Brand: "",
     Sizes: [],
     Colors: [],
-    description: "",
-    StockQuantity: "",
-    ReorderLevel: "",
-    StockStatus: "",
+    Gender: "Unisex",
+    Style: "Casual",
     SupplierName: "",
     SupplierContact: "",
-    imageUrls: [],
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  const [sizeInput, setSizeInput] = useState(""); // State to manage size input
-  const [colorInput, setColorInput] = useState(""); // State to manage color input
-  const [fileUploadError, setFileUploadError] = useState(false); //A boolean to track if there's an error during file upload.
-  const [filePerc, setFilePerc] = useState(0); // A number to track the upload progress of each file.
-  const [uploading, setUploading] = useState(false); // A boolean to indicate if files are currently being uploaded.
-  const [files, setFiles] = useState([]); // Initialize file state
 
+  // Fetch inventory item on mount
   useEffect(() => {
     const fetchInventory = async () => {
-      // setLoading(true);
+      setLoading(true);
+      setError(null);
+
       try {
-        const res = await fetch(`/api/inventories/${id}`);
-        const data = await res.json();
-        setFormData(data);
-      } catch (error) {
-        console.error("Error fetching inventories:", error);
-      }
-      // setLoading(false);
-    };
-    fetchInventory();
-  }, []);
-
-  const handleImageSubmit = (e) => {
-    if (
-      (files ?? []).length > 0 &&
-      (files ?? []).length + formData.imageUrls.length < 4
-    ) {
-      setUploading(true);
-      setFileUploadError(false);
-      const promises = [];
-
-      for (let i = 0; i < files.length; i++) {
-        promises.push(storeImage(files[i]));
-      }
-      Promise.all(promises)
-        .then((urls) => {
-          setFormData({
-            ...formData,
-            imageUrls: formData.imageUrls.concat(urls),
-          });
-          setFileUploadError(false);
-          setUploading(false);
-        })
-        .catch((err) => {
-          setFileUploadError(
-            Swal.fire({
-              icon: "error",
-              title: "Oops...",
-              text: "Image upload failed (2MB max)",
-            })
-          );
-          setUploading(false);
+        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
-    } else {
-      setFileUploadError(
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "You can upload max 6 images",
-        })
-      );
-      setUploading(false);
-    }
-  };
 
-  const storeImage = async (file) => {
-    return new Promise((resolve, reject) => {
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + file.name;
-      const storageRef = ref(storage, `productImages/${fileName}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setFilePerc(Math.round(progress));
-          console.log("Upload is " + progress + "% done");
-        },
-        (error) => {
-          reject(error);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            resolve(downloadURL);
-          });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to fetch inventory item");
         }
-      );
-    });
-  };
 
-  const handleremoveImage = (index) => {
-    setFormData({
-      ...formData,
-      imageUrls: formData.imageUrls.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleInputChange = (e) => {
-    // const { name, value } = e.target;
-    // setFormData({ ...formData, [name]: value });
-
-    const { name, value } = e.target;
-
-    if (name === "SupplierContact") {
-      // Validate that SupplierContact contains only digits and has a maximum of 10 digits
-      if (/^\d*$/.test(value) && value.length <= 10) {
-        setFormData({ ...formData, [name]: value });
-      } else {
+        setFormData({
+          inventoryID: result.inventoryID,
+          ItemName: result.ItemName,
+          Category: result.Category,
+          reorderThreshold: result.reorderThreshold,
+          Quantity: result.Quantity,
+          Location: result.Location,
+          StockStatus: result.StockStatus,
+          Brand: result.Brand,
+          Sizes: result.Sizes || [],
+          Colors: result.Colors || [],
+          Gender: result.Gender,
+          Style: result.Style,
+          SupplierName: result.SupplierName,
+          SupplierContact: result.SupplierContact,
+        });
+      } catch (err) {
+        setError(err.message);
         Swal.fire({
           icon: "error",
-          title: "Invalid Input",
-          text: "Supplier Contact must be a number and contain up to 10 digits.",
+          title: "Error!",
+          text: err.message,
+          confirmButtonColor: "#89198f",
         });
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
+    };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const urls = files.map((file) => URL.createObjectURL(file));
-    setFormData({ ...formData, imageUrls: [...formData.imageUrls, ...urls] });
-    localStorage.setItem(
-      "uploadedImages",
-      JSON.stringify([...formData.imageUrls, ...urls])
-    ); // Save to local storage
-  };
+    fetchInventory();
+  }, [id]);
 
-  // Function to handle size addition
-  const handleAddSize = () => {
-    if (sizeInput && !formData.Sizes.includes(sizeInput)) {
-      setFormData((prevState) => ({
-        ...prevState,
-        Sizes: [...prevState.Sizes, sizeInput],
-      }));
-      setSizeInput(""); // Reset input field
-    }
-  };
-
-  // Function to handle size removal
-  const handleRemoveSize = (size) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      Sizes: prevState.Sizes.filter((s) => s !== size),
+  // Handle form input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
-  // Function to handle color addition
-  const handleAddColor = (color) => {
-    if (color && !formData.Colors.includes(color.hex)) {
-      setFormData((prevState) => ({
-        ...prevState,
-        Colors: [...prevState.Colors, color.hex],
-      }));
-    }
-  };
-
-  // Function to handle color removal
-  const handleRemoveColor = (color, e) => {
-    e.preventDefault(); // Prevent form submission when clicking the remove button
-    setFormData((prevState) => ({
-      ...prevState,
-      Colors: prevState.Colors.filter((c) => c !== color),
+  // Handle array inputs (Sizes, Colors)
+  const handleArrayChange = (e, field) => {
+    const value = e.target.value.split(",").map((item) => item.trim());
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
     }));
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Basic validation
+    if (formData.Quantity < 0 || formData.reorderThreshold < 0) {
+      setError("Quantity and Reorder Threshold cannot be negative");
+      setLoading(false);
+      return;
+    }
+
     try {
-      if (formData.ReorderLevel <= 0) {
-        // Reorder Level must be greater than zero
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Reorder Level must be greater than zero.",
-        });
-        setLoading(false);
-        return;
-      }
+      const inventoryData = {
+        ...formData,
+        inventoryID: Number(formData.inventoryID),
+        reorderThreshold: Number(formData.reorderThreshold),
+        Quantity: Number(formData.Quantity),
+      };
 
-      if (formData.StockQuantity < 0) {
-        // Stock Quantity must be greater than or equal to zero
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Stock Quantity must be greater than zero.",
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (formData.UnitPrice <= 0) {
-        //price must be greater than 0. if not display error msj
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Price must be greater than zero.",
-        });
-        return;
-      }
-
-      const res = await fetch(`/api/inventories/${id}`, {
-        method: "PATCH",
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
+      const response = await fetch(url, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-        }),
+        body: JSON.stringify(inventoryData),
       });
 
-      const data = await res.json();
-      setLoading(false);
+      const result = await response.json();
 
-      if (data.success === false) {
-        setError(data.message);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: `${data.message}`,
-        });
-      } else {
-        Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: "Inventory added successfully",
-        });
-        navigate(`/manager/inventory-management`); // Navigate to the newly created inventory item
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update inventory item");
       }
-    } catch (error) {
-      setError(error.message);
+
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Inventory item updated successfully!",
+        confirmButtonColor: "#89198f",
+      }).then(() => {
+        navigate("/inventory-management");
+      });
+    } catch (err) {
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: `${error.message}`,
+        title: "Error!",
+        text: err.message,
+        confirmButtonColor: "#89198f",
       });
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-lg mx-auto p-6 mt-10 bg-PrimaryColor rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center text-ExtraDarkColor mb-6">
-        Add Inventory
-      </h1>
-      <form onSubmit={handleSubmit}>
-        {/* Item Name */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Item Name
-          </label>
-          <input
-            type="text"
-            name="ItemName"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.ItemName}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Category */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Category
-          </label>
-          <select
-            name="Category"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.Category}
-            onChange={handleInputChange}
-            required
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
+    >
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor">
+        {/* Header */}
+        <div className="flex items-center mb-8 border-b-2 border-SecondaryColor pb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
           >
-            <option value="Men's Clothing">Men's Clothing</option>
-            <option value="Women's Clothing">Women's Clothing</option>
-            <option value="Kids' Clothing">Kids' Clothing</option>
-            <option value="Accessories">Accessories</option>
-            <option value="Footwear">Footwear</option>
-          </select>
-        </div>
-
-        {/* SKU */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">SKU</label>
-          <input
-            type="number"
-            name="SKU"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.SKU}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Price */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Unit Price
-          </label>
-          <input
-            type="number"
-            name="UnitPrice"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.UnitPrice}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Sizes */}
-        {/* <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">Sizes</label>
-          <select
-            name="Sizes"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.Sizes}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="small">S</option>
-            <option value="medium">M</option>
-            <option value="large">L</option>
-            <option value="extra large">XL</option>
-          </select>
-        </div> */}
-
-        {formData.Category !== "Accessories" && formData.Category && (
-          <>
-            {/* Available Sizes */}
-            <div className="mb-4">
-              <label className="block mb-1 text-[#775c41]">
-                Available Sizes:
-              </label>
-              {["XS", "S", "M", "L"].map((size, index) => (
-                <div className="flex">
-                  <input
-                    key={`chk_bx_${index}`}
-                    type="checkbox"
-                    name={size}
-                    value={size}
-                    id={size}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({
-                          ...formData,
-                          Sizes: [...formData.Sizes, e.target.value],
-                        });
-                      } else {
-                        setFormData({
-                          ...formData,
-                          Sizes: formData.Sizes.filter(
-                            (s) => s !== e.target.value
-                          ),
-                        });
-                      }
-                    }}
-                    checked={formData.Sizes.includes(size)}
-                  />
-                  <span
-                    key={`spn_${index}`}
-                    className="mx-2 inline-block bg-[#a98467] text-white px-2 py-1 rounded-full mr-2 mb-2"
-                  >
-                    {size}
-                  </span>
-                  {/* <label for={m} className="mx-2">
-                    {m}
-                  </label> */}
-                </div>
-              ))}
-              {/* <input
-                type="text"
-                placeholder="Add size and press enter"
-                value={sizeInput}
-                onChange={(e) => setSizeInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddSize()}
-                className="block w-full p-2 border border-gray-300 rounded"
-              />
-              <div className="mt-2">
-                {formData.Sizes.map((size, index) => (
-                  <span
-                    key={index}
-                    className="inline-block bg-[#a98467] text-white px-2 py-1 rounded-full mr-2 mb-2"
-                  >
-                    {size}
-                    <button
-                      className="ml-2 text-xs"
-                      onClick={() => handleRemoveSize(size)}
-                    >
-                      x
-                    </button>
-                  </span>
-                ))}
-              </div> */}
+            <FiArrowLeft size={20} />
+          </button>
+          <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+            <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+              <MdInventory className="text-DarkColor" size={24} />
             </div>
-          </>
-        )}
-
-        {/* Colors */}
-        <div className="mb-4">
-          <label className="block mb-1 text-[#775c41]">Available Colors:</label>
-          <SketchPicker color={colorInput} onChangeComplete={handleAddColor} />
-          <div className="mt-2">
-            {formData.Colors.map((color, index) => (
-              <span
-                key={index}
-                className="inline-block w-6 h-6 rounded-full mr-2 mb-2"
-                style={{ backgroundColor: color }}
-              >
-                <button
-                  className="ml-2 text-xs text-white"
-                  type="button" // Ensure this button is not part of the form submission
-                  onClick={(e) => handleRemoveColor(color, e)} // Pass the event to prevent default behavior
-                >
-                  x
-                </button>
-              </span>
-            ))}
-          </div>
+            Update Inventory Item
+          </h1>
         </div>
 
-        {/* Description */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Description
-          </label>
-          <textarea
-            name="description"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.description}
-            onChange={handleInputChange}
-            required
-          ></textarea>
-        </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+              {error}
+            </div>
+          )}
 
-        {/* Stock Quantity */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Stock Quantity
-          </label>
-          <input
-            type="number"
-            name="StockQuantity"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.StockQuantity}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Reorder Level */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Reorder Level
-          </label>
-          <input
-            type="number"
-            name="ReorderLevel"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.ReorderLevel}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Stock Status */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Stock Status
-          </label>
-          <select
-            name="StockStatus"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.StockStatus}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="In Stock">In Stock</option>
-            <option value="Out of Stock">Out of Stock</option>
-          </select>
-        </div>
-
-        {/* Supplier Name */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Supplier Name
-          </label>
-          <input
-            type="text"
-            name="SupplierName"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.SupplierName}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Supplier Contact */}
-        <div className="mb-4">
-          <label className="block text-DarkColor font-medium mb-2">
-            Supplier Contact
-          </label>
-          <input
-            type="text"
-            name="SupplierContact"
-            className="w-full p-2 border border-SecondaryColor rounded"
-            value={formData.SupplierContact}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        {/* Image Upload */}
-        <div className="flex flex-col flex-1 gap-4">
-          <p className="font-semibold">
-            Images:
-            <span className="font-normal text-gray-600 ml-2">
-              The first image will be the cover (max 3)
-            </span>
-          </p>
-          <div className="flex gap-4">
-            <input
-              onChange={(e) => setFiles(e.target.files)}
-              type="file"
-              className="p-3 border border-blue-700 rounded w-full"
-              id="images"
-              accept="image/*"
-              multiple
-            />
-            <button
-              type="button"
-              onClick={handleImageSubmit}
-              className="p-3 text-blue-700 border border-blue-700 rounded uppercase hover:shadow-xl disabled:opacity-80"
-              disabled={uploading}
-            >
-              {uploading ? "Uploading..." : "Upload"}
-            </button>
-          </div>
-          <p className="text-sm self-center font-semibold">
-            {fileUploadError ? (
-              <span className="text-red-700">Error image upload</span>
-            ) : filePerc > 0 && filePerc < 100 ? (
-              <span className="text-slate-700">{`Uploading ${filePerc}%`}</span>
-            ) : filePerc === 100 ? (
-              <span className="text-green-700">
-                Image upload successfully!!
-              </span>
-            ) : (
-              ""
-            )}
-          </p>
-          {formData.imageUrls &&
-            formData.imageUrls.map((url, index) => (
-              <div
-                key={url}
-                className="flex justify-between p-3 border border-blue-700 items-center"
-              >
-                <img
-                  src={url}
-                  alt="pkg images"
-                  className="w-24 h-24 object-contain rounded-lg"
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <ClipLoader color="#89198f" size={50} />
+            </div>
+          ) : (
+            <>
+              {/* Inventory ID (Read-only) */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                  <BsTag className="mr-2" />
+                  Inventory ID
+                </label>
+                <input
+                  type="number"
+                  name="inventoryID"
+                  value={formData.inventoryID}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg bg-gray-100 text-DarkColor"
+                  readOnly
                 />
-                <button
-                  type="button"
-                  onClick={() => handleremoveImage(index)}
-                  className="text-red-700 text-5xl font-extrabold rounded-lg uppercase hover:opacity-60"
-                >
-                  <MdDeleteForever />
-                </button>
               </div>
-            ))}
-          {/* <div className="flex flex-wrap -mx-3 my-4">
-                <div className="flex items-center justify-center mt-4 container mx-auto">
-                  <button className="shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded">
-                    Update Event
-                  </button>
+
+              {/* Item Name */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Item Name</label>
+                <input
+                  type="text"
+                  name="ItemName"
+                  value={formData.ItemName}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter item name"
+                  required
+                />
+              </div>
+
+              {/* Category */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Category</label>
+                <input
+                  type="text"
+                  name="Category"
+                  value={formData.Category}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter category"
+                  required
+                />
+              </div>
+
+              {/* Two-column layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Quantity */}
+                <div className="bg-PrimaryColor p-4 rounded-lg">
+                  <label className="block text-DarkColor font-medium mb-2">Quantity</label>
+                  <input
+                    type="number"
+                    name="Quantity"
+                    value={formData.Quantity}
+                    onChange={handleChange}
+                    className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                    placeholder="Enter quantity"
+                    required
+                    min="0"
+                  />
                 </div>
-              </div> */}
-          {/* {error && <p className="text-red-600">{error}</p>} */}
-        </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="w-full p-2 mt-4 bg-DarkColor text-white rounded hover:bg-ExtraDarkColor transition"
-          disabled={loading}
-        >
-          {loading ? "Submitting..." : "Submit"}
-        </button>
-      </form>
+                {/* Reorder Threshold */}
+                <div className="bg-PrimaryColor p-4 rounded-lg">
+                  <label className="block text-DarkColor font-medium mb-2">Reorder Threshold</label>
+                  <input
+                    type="number"
+                    name="reorderThreshold"
+                    value={formData.reorderThreshold}
+                    onChange={handleChange}
+                    className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                    placeholder="Enter threshold"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
 
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-    </div>
+              {/* Location */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Location</label>
+                <input
+                  type="text"
+                  name="Location"
+                  value={formData.Location}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter location"
+                  required
+                />
+              </div>
+
+              {/* Stock Status */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Stock Status</label>
+                <select
+                  name="StockStatus"
+                  value={formData.StockStatus}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
+                  required
+                >
+                  <option value="in-stock">In Stock</option>
+                  <option value="low-stock">Low Stock</option>
+                  <option value="out-of-stock">Out of Stock</option>
+                </select>
+              </div>
+
+              {/* Brand */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Brand</label>
+                <input
+                  type="text"
+                  name="Brand"
+                  value={formData.Brand}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter brand"
+                  required
+                />
+              </div>
+
+              {/* Sizes */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Sizes (comma-separated)</label>
+                <input
+                  type="text"
+                  name="Sizes"
+                  value={formData.Sizes.join(", ")}
+                  onChange={(e) => handleArrayChange(e, "Sizes")}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="e.g., S, M, L"
+                />
+              </div>
+
+              {/* Colors */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Colors (comma-separated)</label>
+                <input
+                  type="text"
+                  name="Colors"
+                  value={formData.Colors.join(", ")}
+                  onChange={(e) => handleArrayChange(e, "Colors")}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="e.g., Red, Blue"
+                />
+              </div>
+
+              {/* Gender */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Gender</label>
+                <select
+                  name="Gender"
+                  value={formData.Gender}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
+                  required
+                >
+                  <option value="Men">Men</option>
+                  <option value="Women">Women</option>
+                  <option value="Unisex">Unisex</option>
+                </select>
+              </div>
+
+              {/* Style */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Style</label>
+                <select
+                  name="Style"
+                  value={formData.Style}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
+                  required
+                >
+                  <option value="Casual">Casual</option>
+                  <option value="Formal">Formal</option>
+                  <option value="Athletic">Athletic</option>
+                </select>
+              </div>
+
+              {/* Supplier Name */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Supplier Name</label>
+                <input
+                  type="text"
+                  name="SupplierName"
+                  value={formData.SupplierName}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter supplier name"
+                  required
+                />
+              </div>
+
+              {/* Supplier Contact */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Supplier Contact</label>
+                <input
+                  type="text"
+                  name="SupplierContact"
+                  value={formData.SupplierContact}
+                  onChange={handleChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  placeholder="Enter supplier contact"
+                  required
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-DarkColor text-white p-4 rounded-lg flex items-center justify-center hover:opacity-90 transition-all font-bold shadow-lg disabled:opacity-50"
+              >
+                {loading ? (
+                  <ClipLoader color="#fff" size={24} className="mr-2" />
+                ) : (
+                  <MdInventory className="mr-2" size={24} />
+                )}
+                {loading ? "Updating..." : "Update Inventory Item"}
+              </button>
+            </>
+          )}
+        </form>
+      </div>
+    </motion.div>
   );
 }
 

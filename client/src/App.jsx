@@ -18,6 +18,10 @@ import PrivateCus from "./components/private/PrivateCus";
 
 import UpdateInventory from "./pages/inventory/UpdateInventory";
 import DeleteInventory from "./pages/inventory/DeleteInventory";
+import InventoryManagementAll from "./components/inventory/InventoryManagementAll";
+import CreateInventory from "./pages/inventory/CreateInventory";
+
+
 
 //Shadini
 import AddOffer from "./components/discount&offer/AddOffer";
@@ -49,6 +53,9 @@ export default function App() {
         <Route path="/add-offer" element={<AddOffer />}></Route>
         <Route path="/promotion-report" element={<PromotionReport />} />
         <Route path="/edit-promotion/:id" element={<UpdateOffer />} />
+        <Route path="/inventory-management" element={<InventoryManagementAll />} />
+        <Route path="/add-inventory" element={<CreateInventory />} />
+        <Route path="/edit-inventory/:id" element={<UpdateInventory />} />
         {/* <Route path="/update/:id" element={<UpdateOffer />}></Route> */}
         {/* <Route path="/update/:id* " element={<DeleteOffer />}></Route> */}
       </Routes>

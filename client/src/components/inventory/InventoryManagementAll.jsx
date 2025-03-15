@@ -1,462 +1,227 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { MdInfo } from "react-icons/md";
-import { FaEdit } from "react-icons/fa";
-import { MdDeleteForever } from "react-icons/md";
-import { AiOutlineSearch, AiOutlinePlus } from "react-icons/ai";
-import { Link, useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { FiArrowLeft, FiEdit, FiTrash2 } from "react-icons/fi";
+import { MdAdd, MdInventory } from "react-icons/md";
+import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
-import InventoryReport from "./InventoryReport";
-import { MdExpandMore, MdExpandLess } from "react-icons/md";
-import { Scrollbars } from "react-custom-scrollbars-2";
+import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 
-export default function InventoryManagementAll() {
+function InventoryManagementAll() {
   const navigate = useNavigate();
-  const [searchData, setSearchData] = useState({
-    searchTerm: "",
-    category: "all",
-    sort: "created_at",
-    order: "desc",
-  });
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [inventories, setInventories] = useState([]);
-  const [selectedPart, setSelectedPart] = useState(null);
-  const [expandedSections, setExpandedSections] = useState({
-    itemInfo: true,
-    supplierInfo: false,
-    stockInfo: false,
-  });
+  const [error, setError] = useState(null);
 
-  const toggleSection = (section) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
+  // Fetch all inventory items on component mount
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = urlParams.get("searchTerm") || "";
-    const category = urlParams.get("category") || "all";
-    const sort = urlParams.get("sort") || "created_at";
-    const order = urlParams.get("order") || "desc";
-    setSearchData({ searchTerm, category, sort, order });
+    fetchInventory();
+  }, []);
 
-    const fetchInventories = async () => {
-      setLoading(true);
-      const searchQuery = urlParams.toString();
-      try {
-        const res = await fetch(`/api/inventories/search/get?${searchQuery}`);
-        const data = await res.json();
-        setInventories(data);
-      } catch (error) {
-        console.error("Error fetching inventories:", error);
+  const fetchInventory = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`; // Using INVENTORY endpoint
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to fetch inventory items");
       }
+
+      setInventoryItems(result); // Backend returns array directly
+    } catch (err) {
+      setError(err.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: err.message,
+        confirmButtonColor: "#89198f",
+      });
+    } finally {
       setLoading(false);
-    };
-
-    fetchInventories();
-  }, [location.search]);
-
-  const handleChange = (e) => {
-    setSearchData({ ...searchData, [e.target.name]: e.target.value });
+    }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const urlParams = new URLSearchParams();
-    urlParams.set("searchTerm", searchData.searchTerm);
-    urlParams.set("category", searchData.category);
-    const searchQuery = urlParams.toString();
-    navigate(`/manager/inventory-management?${searchQuery}`);
-  };
-
-  const handleEdit = (inventoryId) => {
-    navigate(`/update/${inventoryId}`);
-  };
-
-  const handleDelete = async (inventoryId) => {
+  // Handle Delete
+  const handleDelete = async (inventoryID) => {
     Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
+      confirmButtonColor: "#89198f",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`/api/inventories/${inventoryId}`, {
+          const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${inventoryID}`;
+          const response = await fetch(url, {
             method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
           });
-          const data = await res.json();
-          if (data.success === false) {
-            console.log(data.message);
-            return;
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.message || "Failed to delete inventory item");
           }
+
+          setInventoryItems(inventoryItems.filter((item) => item.inventoryID !== inventoryID));
           Swal.fire({
-            title: "Deleted!",
-            text: "The inventory item has been deleted.",
             icon: "success",
+            title: "Deleted!",
+            text: "Inventory item has been deleted.",
+            confirmButtonColor: "#89198f",
           });
-          setInventories((prev) =>
-            prev.filter((inventory) => inventory._id !== inventoryId)
-          );
-        } catch (error) {
-          console.log(error.message);
+        } catch (err) {
+          Swal.fire({
+            icon: "error",
+            title: "Error!",
+            text: err.message,
+            confirmButtonColor: "#89198f",
+          });
         }
       }
     });
   };
 
-  const handleOverview = (inventory) => {
-    setSelectedPart(inventory);
+  // Handle Edit Navigation
+  const handleEdit = (inventoryID) => {
+    navigate(`/edit-inventory/${inventoryID}`);
+  };
+
+  // Handle Add Navigation
+  const handleAdd = () => {
+    navigate("/add-inventory");
   };
 
   return (
     <motion.div
-      className="min-h-screen bg-gradient-to-r from-[#f5ebe0] to-[#e3d5ca] text-[#775c41] px-6 py-8 rounded-lg "
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
     >
-      <div className="">
-        <motion.h2
-          className="text-3xl font-semibold text-DarkColor mb-6"
-          initial={{ y: -50 }}
-          animate={{ y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          Inventory Warehouse
-        </motion.h2>
-
-        {/* Search Bar */}
-        <motion.div
-          className="search--line flex items-center gap-4 mb-6 flex-wrap"
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div className="relative flex-1">
-            <AiOutlineSearch className="absolute left-3 top-3 text-xl text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search..."
-              onChange={handleChange}
-              name="searchTerm"
-              className="border p-3 pl-10 rounded-lg bg-slate-200 w-full"
-            />
-          </div>
-          <select
-            className="border p-3 rounded-lg bg-slate-200 flex-1"
-            name="category"
-            required
-            onChange={handleChange}
-          >
-            <option value="all">All</option>
-            <option value="Men's Clothing">Men's Clothing</option>
-            <option value="Women's Clothing">Women's Clothing</option>
-            <option value="Kids' Clothing">Kids' Clothing</option>
-            <option value="Accessories">Accessories</option>
-            <option value="Footwear">Footwear</option>
-          </select>
-          <motion.button
-            className="bg-DarkColor text-white p-3 rounded-lg hover:bg-ExtraDarkColor transition"
-            onClick={handleSubmit}
-            whileHover={{ scale: 1.05 }}
-          >
-            Search
-          </motion.button>
-          <motion.div whileHover={{ scale: 1.1 }}>
-            <InventoryReport inventory={inventories} />
-          </motion.div>
-        </motion.div>
-
-        {/* Loading Spinner */}
-        {loading && (
-          <div className="flex justify-center items-center">
-            <div className="loader"></div>
-          </div>
-        )}
-
-        {/* Inventory Table */}
-        <motion.table
-          className="min-w-full bg-white rounded-lg shadow-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <thead>
-            <tr>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Image
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Item Name
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Category
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Price
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Sizes
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Colors
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Stock Quantity
-              </th>
-              <th className="text-left px-6 py-4 font-semibold text-DarkColor">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {inventories.map((inventory) => (
-              <motion.tr
-                key={inventory._id}
-                whileHover={{ scale: 1.02 }}
-                className="hover:bg-PrimaryColor transition-all duration-200"
-              >
-                <td className="text-left px-6 py-4">
-                  {inventory.imageUrls ? (
-                    <img
-                      src={inventory.imageUrls[0]}
-                      alt={inventory.ItemName}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <span>No Image</span>
-                  )}
-                </td>
-                <td className="text-left px-6 py-4">{inventory.ItemName}</td>
-                <td className="text-left px-6 py-4">{inventory.Category}</td>
-                <td className="text-left px-6 py-4">
-                  ${inventory.UnitPrice}.00
-                </td>
-                <td className="text-left px-6 py-4">{inventory.Sizes}</td>
-                <td className="text-left px-6 py-4">
-                  {inventory.Colors &&
-                    inventory.Colors.map((color, index) => (
-                      <span
-                        key={index}
-                        className="inline-block w-4 h-4 rounded-full mr-2 border border-gray-500"
-                        style={{ backgroundColor: color }}
-                      ></span>
-                    ))}
-                </td>
-                <td className="text-left px-6 py-4">
-                  {inventory.StockQuantity}
-                </td>
-                <td className="text-left px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <Link to={`/update/${inventory._id}`}>
-                      <FaEdit className="text-xl text-DarkColor" />
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(inventory._id)}
-                      className="text-red-600"
-                    >
-                      <MdDeleteForever className="text-xl" />
-                    </button>
-                    <button
-                      onClick={() => handleOverview(inventory)}
-                      className="text-blue-500"
-                    >
-                      <MdInfo className="text-xl" />
-                    </button>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </motion.table>
-      </div>
-      {/* Item Overview Popup */}
-      <AnimatePresence>
-        {selectedPart && (
-          <motion.div
-            className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedPart(null)}
-          >
-            <motion.div
-              className="bg-white rounded-lg p-8 max-w-3xl w-full shadow-2xl relative"
-              initial={{ y: -50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-6xl border-2 border-SecondaryColor">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 border-b-2 border-SecondaryColor pb-4">
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
             >
-              {/* Modal Title */}
-              <h2 className="text-2xl text-gray-800 mb-6 font-bold border-b border-gray-300 pb-2">
-                {selectedPart.ItemName}
-              </h2>
+              <FiArrowLeft size={20} />
+            </button>
+            <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+              <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+                <MdInventory className="text-DarkColor" size={24} />
+              </div>
+              Inventory Management
+            </h1>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
+          >
+            <MdAdd size={20} className="mr-1" />
+            Add New
+          </button>
+        </div>
 
-              {/* Scrollable Content Area with Custom Scrollbars */}
-              <Scrollbars
-                autoHide
-                autoHideTimeout={1000}
-                autoHideDuration={200}
-                style={{ height: "400px" }}
-                renderThumbVertical={({ style, ...props }) => (
-                  <div
-                    {...props}
-                    style={{
-                      ...style,
-                      backgroundColor: "#888",
-                      borderRadius: "4px",
-                    }}
-                  />
-                )}
-              >
-                {/* Item Information Section */}
-                <div className="mb-4">
-                  <div
-                    className="flex justify-between items-center cursor-pointer"
-                    onClick={() => toggleSection("itemInfo")}
-                  >
-                    <h3 className="text-xl font-semibold text-gray-700">
-                      Item Information
-                    </h3>
-                    {expandedSections.itemInfo ? (
-                      <MdExpandLess className="text-xl text-gray-500" />
-                    ) : (
-                      <MdExpandMore className="text-xl text-gray-500" />
-                    )}
-                  </div>
-                  {expandedSections.itemInfo && (
-                    <motion.div
-                      className="mt-2 space-y-2"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                    >
-                      <div className="flex space-x-6">
-                        <div className="w-1/3">
-                          <img
-                            src={selectedPart.imageUrls[0]}
-                            alt={selectedPart.ItemName}
-                            className="w-full h-auto object-cover rounded shadow-lg"
-                          />
-                        </div>
-                        <div className="w-2/3 space-y-2">
-                          <p>
-                            <strong>Description:</strong>{" "}
-                            {selectedPart.description}
-                          </p>
-                          <p>
-                            <strong>Category:</strong> {selectedPart.Category}
-                          </p>
-                          <p>
-                            <strong>Sizes:</strong> {selectedPart.Sizes}
-                          </p>
-                          <p>
-                            <strong>Colors:</strong>{" "}
-                            {selectedPart.Colors.map((color, index) => (
-                              <span
-                                key={index}
-                                className="inline-block w-4 h-4 rounded-full mr-2 border border-gray-500"
-                                style={{ backgroundColor: color }}
-                              ></span>
-                            ))}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Supplier Information Section */}
-                <div className="mb-4">
-                  <div
-                    className="flex justify-between items-center cursor-pointer"
-                    onClick={() => toggleSection("supplierInfo")}
-                  >
-                    <h3 className="text-xl font-semibold text-gray-700">
-                      Supplier Information
-                    </h3>
-                    {expandedSections.supplierInfo ? (
-                      <MdExpandLess className="text-xl text-gray-500" />
-                    ) : (
-                      <MdExpandMore className="text-xl text-gray-500" />
-                    )}
-                  </div>
-                  {expandedSections.supplierInfo && (
-                    <motion.div
-                      className="mt-2 space-y-2"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                    >
-                      <p>
-                        <strong>Supplier:</strong> {selectedPart.SupplierName}
-                      </p>
-                      <p>
-                        <strong>Supplier Contact:</strong>{" "}
-                        {selectedPart.SupplierContact}
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Stock Information Section */}
-                <div className="mb-4">
-                  <div
-                    className="flex justify-between items-center cursor-pointer"
-                    onClick={() => toggleSection("stockInfo")}
-                  >
-                    <h3 className="text-xl font-semibold text-gray-700">
-                      Stock Information
-                    </h3>
-                    {expandedSections.stockInfo ? (
-                      <MdExpandLess className="text-xl text-gray-500" />
-                    ) : (
-                      <MdExpandMore className="text-xl text-gray-500" />
-                    )}
-                  </div>
-                  {expandedSections.stockInfo && (
-                    <motion.div
-                      className="mt-2 space-y-2"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                    >
-                      <p>
-                        <strong>Price:</strong> Rs {selectedPart.UnitPrice}
-                      </p>
-                      <p>
-                        <strong>SKU:</strong> {selectedPart.SKU}
-                      </p>
-                      <p>
-                        <strong>Stock Quantity:</strong>{" "}
-                        {selectedPart.StockQuantity}
-                      </p>
-                      <p>
-                        <strong>Stock Status:</strong>{" "}
-                        {selectedPart.StockStatus}
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
-              </Scrollbars>
-
-              {/* Close Button */}
-              <button
-                className="absolute top-2 right-2 text-2xl text-gray-500 hover:text-gray-800"
-                onClick={() => setSelectedPart(null)}
-              >
-                &times;
-              </button>
-            </motion.div>
-          </motion.div>
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+            {error}
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <ClipLoader color="#89198f" size={50} />
+          </div>
+        ) : (
+          /* Inventory Table */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-DarkColor">
+              <thead className="bg-PrimaryColor text-DarkColor">
+                <tr>
+                  <th className="p-4 font-semibold">ID</th>
+                  <th className="p-4 font-semibold">Item Name</th>
+                  <th className="p-4 font-semibold">Category</th>
+                  <th className="p-4 font-semibold">Quantity</th>
+                  <th className="p-4 font-semibold">Reorder Threshold</th>
+                  <th className="p-4 font-semibold">Stock Status</th>
+                  <th className="p-4 font-semibold">Location</th>
+                  <th className="p-4 font-semibold">Brand</th>
+                  <th className="p-4 font-semibold">Gender</th>
+                  <th className="p-4 font-semibold">Style</th>
+                  <th className="p-4 font-semibold">Supplier</th>
+                  <th className="p-4 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inventoryItems.length > 0 ? (
+                  inventoryItems.map((item) => (
+                    <tr
+                      key={item.inventoryID}
+                      className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
+                    >
+                      <td className="p-4">{item.inventoryID}</td>
+                      <td className="p-4">{item.ItemName}</td>
+                      <td className="p-4">{item.Category}</td>
+                      <td className="p-4">{item.Quantity}</td>
+                      <td className="p-4">{item.reorderThreshold}</td>
+                      <td className="p-4">{item.StockStatus}</td>
+                      <td className="p-4">{item.Location}</td>
+                      <td className="p-4">{item.Brand}</td>
+                      <td className="p-4">{item.Gender}</td>
+                      <td className="p-4">{item.Style}</td>
+                      <td className="p-4">{item.SupplierName}</td>
+                      <td className="p-4 flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(item.inventoryID)}
+                          className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
+                          title="Edit"
+                        >
+                          <FiEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.inventoryID)}
+                          className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                          title="Delete"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="12" className="p-4 text-center text-gray-500">
+                      No inventory items found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
+
+export default InventoryManagementAll;
