@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import promotionRoutes from './routes/promotion.routes.js';
+import InventoryRoutes from './routes/inventory.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,6 +20,8 @@ app.use(express.json()); // Parse JSON bodies
 
 // Routes
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/inventory', InventoryRoutes);
+
 
 // MongoDB Connection
 const connectDB = async () => {
