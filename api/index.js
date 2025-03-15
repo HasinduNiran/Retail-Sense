@@ -5,6 +5,7 @@ import InventoryRoutes from './routes/inventory.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cors from 'cors'; 
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -16,7 +17,12 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const app = express();
 
 // Middleware
-app.use(express.json()); // Parse JSON bodies
+app.use(express.json()); 
+app.use(cors({ 
+//   origin: 'http://localhost:5178',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  allowedHeaders: ['Content-Type'], 
+}));
 
 // Routes
 app.use('/api/promotions', promotionRoutes);

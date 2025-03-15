@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import ProductCard from "../../layouts/ProductCard";
-import items from "../../components/disc&offer/items"; // Data for fashion items
+// import ProductCard from "../../layouts/ProductCard";
+// import items from "../../components/disc&offer/items"; // Data for fashion items
 import LoadingSpinner from "../../components/Spinner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
