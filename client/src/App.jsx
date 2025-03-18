@@ -1,6 +1,5 @@
 // App.jsx
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home"; // Import the Home component// Import the Dashboard component
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import PrivateAdmin from "./components/private/PrivateAdmin";
@@ -20,8 +19,7 @@ import UpdateInventory from "./pages/inventory/UpdateInventory";
 import DeleteInventory from "./pages/inventory/DeleteInventory";
 import InventoryManagementAll from "./components/inventory/InventoryManagementAll";
 import CreateInventory from "./pages/inventory/CreateInventory";
-
-
+import RetrievedInventoryTable from './components/inventory/RetrievedInventoryTable';
 
 //Shadini
 import AddOffer from "./components/discount&offer/AddOffer";
@@ -31,7 +29,7 @@ import UpdateOffer from "./components/discount&offer/UpdateOffer";
 export default function App() {
   return (
     // Single BrowserRouter wrapping the entire application
-    <BrowserRouter>
+    <Router>
       <Routes>
         {/* Home Route */}
         <Route path="/" element={<Home />} />
@@ -56,9 +54,10 @@ export default function App() {
         <Route path="/inventory-management" element={<InventoryManagementAll />} />
         <Route path="/add-inventory" element={<CreateInventory />} />
         <Route path="/edit-inventory/:id" element={<UpdateInventory />} />
+        <Route path="/retrieved-inventory" element={<RetrievedInventoryTable />} />
         {/* <Route path="/update/:id" element={<UpdateOffer />}></Route> */}
         {/* <Route path="/update/:id* " element={<DeleteOffer />}></Route> */}
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }

@@ -6,13 +6,12 @@ import { MdInventory } from "react-icons/md";
 import { BsTag } from "react-icons/bs";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
-import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
+import API_CONFIG from "../../config/apiConfig.js";
 
 function UpdateInventory() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    inventoryID: "",
     ItemName: "",
     Category: "",
     reorderThreshold: "",
@@ -26,7 +25,10 @@ function UpdateInventory() {
     Style: "Casual",
     SupplierName: "",
     SupplierContact: "",
+    image: null, // Changed to handle file or existing URL
   });
+  const [existingImage, setExistingImage] = useState(null); // To store current image URL
+  const [imagePreview, setImagePreview] = useState(null); // For new image preview
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -52,7 +54,6 @@ function UpdateInventory() {
         }
 
         setFormData({
-          inventoryID: result.inventoryID,
           ItemName: result.ItemName,
           Category: result.Category,
           reorderThreshold: result.reorderThreshold,
@@ -66,7 +67,10 @@ function UpdateInventory() {
           Style: result.Style,
           SupplierName: result.SupplierName,
           SupplierContact: result.SupplierContact,
+          image: null, // New image will be set separately
         });
+        setExistingImage(result.image); // Store existing image path
+        setImagePreview(`${API_CONFIG.BASE_URL}/${result.image}`); // Set initial preview
       } catch (err) {
         setError(err.message);
         Swal.fire({
@@ -83,13 +87,25 @@ function UpdateInventory() {
     fetchInventory();
   }, [id]);
 
-  // Handle form input changes
+  // Handle text input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Handle file input change
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setFormData((prev) => ({
+      ...prev,
+      image: file,
+    }));
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
 
   // Handle array inputs (Sizes, Colors)
@@ -115,20 +131,32 @@ function UpdateInventory() {
     }
 
     try {
-      const inventoryData = {
-        ...formData,
-        inventoryID: Number(formData.inventoryID),
-        reorderThreshold: Number(formData.reorderThreshold),
-        Quantity: Number(formData.Quantity),
-      };
+      const formDataToSend = new FormData();
+
+      // Append all fields to FormData
+      Object.keys(formData).forEach((key) => {
+        if (key === "Sizes" || key === "Colors") {
+          formDataToSend.append(key, formData[key].join(","));
+        } else if (key === "image" && formData[key]) {
+          formDataToSend.append("image", formData[key]); // Only append new image if present
+        } else if (key !== "image") {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Convert numeric fields
+      formDataToSend.set("reorderThreshold", Number(formData.reorderThreshold));
+      formDataToSend.set("Quantity", Number(formData.Quantity));
+
+      // If no new image is uploaded, append existing image path
+      if (!formData.image && existingImage) {
+        formDataToSend.append("image", existingImage);
+      }
 
       const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
       const response = await fetch(url, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(inventoryData),
+        body: formDataToSend, // Use FormData for multipart upload
       });
 
       const result = await response.json();
@@ -183,7 +211,7 @@ function UpdateInventory() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
               {error}
@@ -205,7 +233,7 @@ function UpdateInventory() {
                 <input
                   type="number"
                   name="inventoryID"
-                  value={formData.inventoryID}
+                  value={id}
                   className="w-full p-3 border-2 border-SecondaryColor rounded-lg bg-gray-100 text-DarkColor"
                   readOnly
                 />
@@ -399,6 +427,29 @@ function UpdateInventory() {
                   className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
                   placeholder="Enter supplier contact"
                   required
+                />
+              </div>
+
+              {/* Image Upload */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2">Item Image</label>
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="mt-2 mb-2 max-w-xs rounded"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23cccccc"/><text x="50%" y="50%" font-size="12" text-anchor="middle" dy=".3em" fill="%23666666">No Image</text></svg>`;
+                    }}
+                  />
+                )}
+                <input
+                  type="file"
+                  name="image"
+                  onChange={handleFileChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                  accept="image/*"
                 />
               </div>
 
