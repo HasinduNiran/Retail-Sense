@@ -62,6 +62,37 @@ export const createInventory = async (req, res) => {
     }
 };
 
+export const sendToStore = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { unitPrice } = req.body;
+  
+      if (!unitPrice || isNaN(unitPrice)) {
+        return res.status(400).json({ message: 'Valid unit price required' });
+      }
+  
+      const updatedItem = await Inventory.findByIdAndUpdate(
+        id,
+        { 
+          $set: { 
+            unitPrice: parseFloat(unitPrice),
+            StockStatus: 'in-stock'  
+          } 
+        },
+        { new: true }
+      );
+  
+      if (!updatedItem) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+  
+      res.json(updatedItem);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+  
 // Get all inventory items with pagination
 export const getAllInventory = async (req, res) => {
     try {

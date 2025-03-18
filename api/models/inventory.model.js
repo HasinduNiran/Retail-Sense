@@ -68,6 +68,11 @@ const inventorySchema = new mongoose.Schema({
     type: String, // URL to the image or file path
     required: true
   },
+  unitPrice: {
+    type: Number,
+    min: 0,
+    default: null
+  },
   // haveOffer: {
   //   type: Boolean,
   //   default: false,

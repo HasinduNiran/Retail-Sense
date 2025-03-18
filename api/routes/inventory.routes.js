@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import {
     createInventory,
+    sendToStore,
     getAllInventory,
     getInventoryById,
     updateInventory,
@@ -73,6 +74,7 @@ router.get('/:id', getInventoryById);
 router.post('/', upload.single('image'), createInventory);
 router.put('/:id', upload.single('image'), updateInventory);
 router.delete('/:id', deleteInventory);
+router.post('/send-to-store/:id', sendToStore);
 
 // Stock status update route - updated to handle both add and retrieve
 router.put('/:inventoryID/stock-status', updateStockStatus);

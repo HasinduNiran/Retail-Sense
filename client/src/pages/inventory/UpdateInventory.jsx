@@ -1,78 +1,100 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { FiArrowLeft } from "react-icons/fi";
-import { MdInventory } from "react-icons/md";
-import { BsTag } from "react-icons/bs";
-import ClipLoader from "react-spinners/ClipLoader";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiArrowLeft, FiPlus, FiX } from "react-icons/fi";
+import { HexColorPicker } from "react-colorful";
 import Swal from "sweetalert2";
 import API_CONFIG from "../../config/apiConfig.js";
+
+const CATEGORIES = ['Clothing', 'Accessories', 'Footwear', 'Bags', 'Sportswear', 'Seasonal', 'Kids', 'Formal Wear', 'Casual Wear', 'Lingerie'];
+const LOCATIONS = ['Warehouse', 'Stockroom', 'Backroom Storage', 'Retail Floor'];
+const STYLES = ['Casual', 'Formal', 'Athletic'];
 
 function UpdateInventory() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    ItemName: "",
-    Category: "",
-    reorderThreshold: "",
-    Quantity: "",
-    Location: "",
-    StockStatus: "in-stock",
-    Brand: "",
+    ItemName: '',
+    Category: '',
+    Location: '',
+    Quantity: '',
+    Brand: '',
     Sizes: [],
     Colors: [],
-    Gender: "Unisex",
-    Style: "Casual",
-    SupplierName: "",
-    SupplierContact: "",
-    image: null, // Changed to handle file or existing URL
+    Gender: '',
+    Style: '',
+    reorderThreshold: '',
+    StockStatus: 'in-stock',
+    SupplierName: '',
+    SupplierContact: '',
+    image: null,
   });
-  const [existingImage, setExistingImage] = useState(null); // To store current image URL
-  const [imagePreview, setImagePreview] = useState(null); // For new image preview
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [currentColor, setCurrentColor] = useState('#000000');
+  const [colorInput, setColorInput] = useState('#000000');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Parsing functions for sizes and colors
+  const parseSizes = (sizes) => {
+    if (!sizes) return [];
+    try {
+      const parsed = JSON.parse(sizes);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      return sizes.split(/[,\/\[\]'"\\]/)
+        .map(s => s.trim().toUpperCase())
+        .filter(s => s);
+    }
+    return [];
+  };
+
+  const parseColors = (colors) => {
+    if (!colors) return [];
+    try {
+      const parsed = JSON.parse(colors);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      return colors.split(/[,\/\[\]'"\\]/)
+        .map(c => c.trim().toUpperCase())
+        .filter(c => /^#[0-9A-F]{6}$/i.test(c));
+    }
+    return [];
+  };
 
   // Fetch inventory item on mount
   useEffect(() => {
     const fetchInventory = async () => {
       setLoading(true);
-      setError(null);
-
       try {
         const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
         const response = await fetch(url, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
 
         const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || "Failed to fetch inventory item");
-        }
+        if (!response.ok) throw new Error(result.message || "Failed to fetch inventory item");
 
         setFormData({
-          ItemName: result.ItemName,
-          Category: result.Category,
-          reorderThreshold: result.reorderThreshold,
-          Quantity: result.Quantity,
-          Location: result.Location,
-          StockStatus: result.StockStatus,
-          Brand: result.Brand,
-          Sizes: result.Sizes || [],
-          Colors: result.Colors || [],
-          Gender: result.Gender,
-          Style: result.Style,
-          SupplierName: result.SupplierName,
-          SupplierContact: result.SupplierContact,
-          image: null, // New image will be set separately
+          ItemName: result.ItemName || '',
+          Category: result.Category || '',
+          Location: result.Location || '',
+          Quantity: result.Quantity || '',
+          Brand: result.Brand || '',
+          Sizes: parseSizes(result.Sizes),
+          Colors: parseColors(result.Colors),
+          Gender: result.Gender || '',
+          Style: result.Style || '',
+          reorderThreshold: result.reorderThreshold || '',
+          StockStatus: result.StockStatus || 'in-stock',
+          SupplierName: result.SupplierName || '',
+          SupplierContact: result.SupplierContact || '',
+          image: null,
         });
-        setExistingImage(result.image); // Store existing image path
-        setImagePreview(`${API_CONFIG.BASE_URL}/${result.image}`); // Set initial preview
+        setImagePreview(result.image ? `${API_CONFIG.BASE_URL}/${result.image}` : null);
       } catch (err) {
-        setError(err.message);
         Swal.fire({
           icon: "error",
           title: "Error!",
@@ -87,102 +109,144 @@ function UpdateInventory() {
     fetchInventory();
   }, [id]);
 
-  // Handle text input changes
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSizeToggle = (size) => {
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      Sizes: prev.Sizes.includes(size) 
+        ? prev.Sizes.filter((s) => s !== size) 
+        : [...prev.Sizes, size.toUpperCase()],
     }));
   };
 
-  // Handle file input change
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleAddSize = (e) => {
+    const newSize = e.target.value.trim().toUpperCase();
+    if (e.key === 'Enter' && newSize) {
+      e.preventDefault();
+      if (!formData.Sizes.includes(newSize)) {
+        setFormData(prev => ({ ...prev, Sizes: [...prev.Sizes, newSize] }));
+      }
+      e.target.value = '';
+    }
+  };
+
+  const handleAddColor = () => {
+    const colorToAdd = colorInput.toUpperCase();
+    if (/^#[0-9A-F]{6}$/i.test(colorToAdd) && !formData.Colors.includes(colorToAdd)) {
+      setFormData((prev) => ({ ...prev, Colors: [...prev.Colors, colorToAdd] }));
+      setCurrentColor('#000000');
+      setColorInput('#000000');
+      setShowColorPicker(false);
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Color',
+        text: 'Please enter a valid hex color code (e.g., #FF0000)',
+        confirmButtonColor: '#89198f',
+      });
+    }
+  };
+
+  const handleRemoveColor = (colorToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      image: file,
+      Colors: prev.Colors.filter((color) => color !== colorToRemove),
     }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
     if (file) {
+      setFormData((prev) => ({ ...prev, image: file }));
       setImagePreview(URL.createObjectURL(file));
     }
   };
 
-  // Handle array inputs (Sizes, Colors)
-  const handleArrayChange = (e, field) => {
-    const value = e.target.value.split(",").map((item) => item.trim());
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleColorChange = (newColor) => {
+    setCurrentColor(newColor);
+    setColorInput(newColor);
   };
 
-  // Handle form submission
+  const handleColorInputChange = (e) => {
+    const value = e.target.value;
+    setColorInput(value);
+    if (/^#[0-9A-F]{6}$/i.test(value)) {
+      setCurrentColor(value);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
 
-    // Basic validation
-    if (formData.Quantity < 0 || formData.reorderThreshold < 0) {
-      setError("Quantity and Reorder Threshold cannot be negative");
-      setLoading(false);
+    const requiredFields = [
+      'ItemName', 'Category', 'Location', 'Quantity', 'Brand',
+      'Gender', 'Style', 'reorderThreshold', 'SupplierName', 'SupplierContact',
+    ];
+
+    const missingFields = requiredFields.filter((field) => !formData[field]);
+    if (missingFields.length > 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Required Fields Missing',
+        text: `Please fill in: ${missingFields.join(', ')}`,
+        confirmButtonColor: '#89198f',
+      });
+      return;
+    }
+
+    if (!formData.image && !imagePreview) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Image Required',
+        text: 'Please upload an image for the inventory item',
+        confirmButtonColor: '#89198f',
+      });
       return;
     }
 
     try {
+      setIsSubmitting(true);
       const formDataToSend = new FormData();
-
-      // Append all fields to FormData
-      Object.keys(formData).forEach((key) => {
-        if (key === "Sizes" || key === "Colors") {
-          formDataToSend.append(key, formData[key].join(","));
-        } else if (key === "image" && formData[key]) {
-          formDataToSend.append("image", formData[key]); // Only append new image if present
-        } else if (key !== "image") {
-          formDataToSend.append(key, formData[key]);
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'Sizes' || key === 'Colors') {
+          formDataToSend.append(key, JSON.stringify(value));
+        } else if (key === 'image' && value) {
+          formDataToSend.append(key, value);
+        } else if (key !== 'image') {
+          formDataToSend.append(key, value);
         }
       });
-
-      // Convert numeric fields
-      formDataToSend.set("reorderThreshold", Number(formData.reorderThreshold));
-      formDataToSend.set("Quantity", Number(formData.Quantity));
-
-      // If no new image is uploaded, append existing image path
-      if (!formData.image && existingImage) {
-        formDataToSend.append("image", existingImage);
-      }
 
       const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
       const response = await fetch(url, {
         method: "PUT",
-        body: formDataToSend, // Use FormData for multipart upload
+        body: formDataToSend,
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to update inventory item");
-      }
+      if (!response.ok) throw new Error(result.message || 'Failed to update inventory item');
 
       Swal.fire({
-        icon: "success",
-        title: "Success!",
-        text: "Inventory item updated successfully!",
-        confirmButtonColor: "#89198f",
+        icon: 'success',
+        title: 'Success',
+        text: 'Inventory item updated successfully!',
+        confirmButtonColor: '#89198f',
       }).then(() => {
-        navigate("/inventory-management");
+        navigate('/inventory-management');
       });
-    } catch (err) {
+    } catch (error) {
       Swal.fire({
-        icon: "error",
-        title: "Error!",
-        text: err.message,
-        confirmButtonColor: "#89198f",
+        icon: 'error',
+        title: 'Error',
+        text: error.message,
+        confirmButtonColor: '#89198f',
       });
-      setError(err.message);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -191,281 +255,371 @@ function UpdateInventory() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
+      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-8"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor">
-        {/* Header */}
-        <div className="flex items-center mb-8 border-b-2 border-SecondaryColor pb-4">
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
+        <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
+            className="p-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-all"
           >
-            <FiArrowLeft size={20} />
+            <FiArrowLeft size={24} />
           </button>
-          <h1 className="text-2xl font-bold text-DarkColor flex items-center">
-            <div className="bg-PrimaryColor p-2 rounded-full mr-3">
-              <MdInventory className="text-DarkColor" size={24} />
-            </div>
+          <h1 className="text-3xl font-extrabold text-purple-800 flex items-center">
+            <span className="mr-3 bg-purple-600 text-white p-2 rounded-full">
+              <FiPlus size={24} />
+            </span>
             Update Inventory Item
           </h1>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-              {error}
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-8">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <ClipLoader color="#89198f" size={50} />
+              <svg className="animate-spin h-10 w-10 text-purple-600" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
+              </svg>
             </div>
           ) : (
             <>
-              {/* Inventory ID (Read-only) */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2 flex items-center">
-                  <BsTag className="mr-2" />
-                  Inventory ID
-                </label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Inventory ID</label>
                 <input
-                  type="number"
-                  name="inventoryID"
+                  type="text"
                   value={id}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg bg-gray-100 text-DarkColor"
+                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 bg-gray-100 text-gray-700"
                   readOnly
                 />
               </div>
 
-              {/* Item Name */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Item Name</label>
-                <input
-                  type="text"
-                  name="ItemName"
-                  value={formData.ItemName}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter item name"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="relative group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Item Image</label>
+                    <div className="flex items-center justify-center w-full h-64 bg-gray-100 rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 transition-all">
+                      {imagePreview ? (
+                        <div className="relative">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="h-60 w-full object-cover rounded-xl"
+                            onError={(e) => {
+                              e.target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23cccccc"/><text x="50%" y="50%" font-size="12" text-anchor="middle" dy=".3em" fill="%23666666">No Image</text></svg>`;
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImagePreview(null);
+                              setFormData((prev) => ({ ...prev, image: null }));
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <FiX size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center cursor-pointer">
+                          <FiPlus className="text-purple-500 h-12 w-12" />
+                          <span className="mt-2 text-sm font-medium text-purple-600">Upload Image</span>
+                          <input
+                            type="file"
+                            name="image"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Item Name</label>
+                    <input
+                      type="text"
+                      name="ItemName"
+                      value={formData.ItemName}
+                      onChange={handleInputChange}
+                      className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                      placeholder="e.g., Classic T-Shirt"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Category</label>
+                    <select
+                      name="Category"
+                      value={formData.Category}
+                      onChange={handleInputChange}
+                      className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                      required
+                    >
+                      <option value="">Select Category</option>
+                      {CATEGORIES.map((category) => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Location</label>
+                    <select
+                      name="Location"
+                      value={formData.Location}
+                      onChange={handleInputChange}
+                      className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                      required
+                    >
+                      <option value="">Select Location</option>
+                      {LOCATIONS.map((location) => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Category */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Category</label>
-                <input
-                  type="text"
-                  name="Category"
-                  value={formData.Category}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter category"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Sizes</label>
+                  <div className="flex flex-wrap gap-3 mb-2">
+                    {[...new Set(formData.Sizes)].map((size) => (
+                      <motion.button
+                        key={size}
+                        type="button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSizeToggle(size)}
+                        className={`px-3 py-1 rounded-full flex items-center justify-center text-sm font-medium transition-all shadow-sm
+                          ${formData.Sizes.includes(size)
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        {size}
+                        <FiX className="ml-1 text-xs" />
+                      </motion.button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Add custom size (press Enter)"
+                    onKeyDown={handleAddSize}
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Colors</label>
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {formData.Colors.map((color) => (
+                      <div key={color} className="relative group">
+                        <div
+                          className="w-10 h-10 rounded-full border-2 border-gray-200 shadow-sm"
+                          style={{ backgroundColor: color }}
+                          title={color}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveColor(color)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowColorPicker(true)}
+                      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-purple-600 hover:bg-gray-200 shadow-sm"
+                    >
+                      <FiPlus size={16} />
+                    </motion.button>
+                  </div>
+
+                  <AnimatePresence>
+                    {showColorPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute z-20 p-4 bg-white rounded-xl shadow-xl border border-gray-200"
+                      >
+                        <HexColorPicker color={currentColor} onChange={handleColorChange} />
+                        <input
+                          type="text"
+                          value={colorInput}
+                          onChange={handleColorInputChange}
+                          className="mt-3 w-full p-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                          placeholder="#HEXCODE"
+                          maxLength={7}
+                        />
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowColorPicker(false)}
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 rounded-lg"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddColor}
+                            className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                          >
+                            Add Color
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
-              {/* Two-column layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Quantity */}
-                <div className="bg-PrimaryColor p-4 rounded-lg">
-                  <label className="block text-DarkColor font-medium mb-2">Quantity</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Brand</label>
+                  <input
+                    type="text"
+                    name="Brand"
+                    value={formData.Brand}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    placeholder="e.g., Nike"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Gender</label>
+                  <select
+                    name="Gender"
+                    value={formData.Gender}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Men">Men</option>
+                    <option value="Women">Women</option>
+                    <option value="Unisex">Unisex</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Style</label>
+                  <select
+                    name="Style"
+                    value={formData.Style}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                    required
+                  >
+                    <option value="">Select Style</option>
+                    {STYLES.map((style) => (
+                      <option key={style} value={style}>{style}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Quantity</label>
                   <input
                     type="number"
                     name="Quantity"
                     value={formData.Quantity}
-                    onChange={handleChange}
-                    className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                    placeholder="Enter quantity"
-                    required
+                    onChange={handleInputChange}
                     min="0"
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    placeholder="e.g., 50"
+                    required
                   />
                 </div>
 
-                {/* Reorder Threshold */}
-                <div className="bg-PrimaryColor p-4 rounded-lg">
-                  <label className="block text-DarkColor font-medium mb-2">Reorder Threshold</label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Reorder Threshold</label>
                   <input
                     type="number"
                     name="reorderThreshold"
                     value={formData.reorderThreshold}
-                    onChange={handleChange}
-                    className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                    placeholder="Enter threshold"
-                    required
+                    onChange={handleInputChange}
                     min="0"
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    placeholder="e.g., 10"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Stock Status</label>
+                  <select
+                    name="StockStatus"
+                    value={formData.StockStatus}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                    required
+                  >
+                    <option value="in-stock">In Stock</option>
+                    <option value="low-stock">Low Stock</option>
+                    <option value="out-of-stock">Out of Stock</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Supplier Name</label>
+                  <input
+                    type="text"
+                    name="SupplierName"
+                    value={formData.SupplierName}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    placeholder="e.g., Fashion Co."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Supplier Contact</label>
+                  <input
+                    type="text"
+                    name="SupplierContact"
+                    value={formData.SupplierContact}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    placeholder="e.g., +1 123-456-7890"
+                    required
                   />
                 </div>
               </div>
 
-              {/* Location */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Location</label>
-                <input
-                  type="text"
-                  name="Location"
-                  value={formData.Location}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter location"
-                  required
-                />
-              </div>
-
-              {/* Stock Status */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Stock Status</label>
-                <select
-                  name="StockStatus"
-                  value={formData.StockStatus}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
-                  required
+              <div className="pt-6">
+                <motion.button
+                  type="submit"
+                  disabled={isSubmitting}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="in-stock">In Stock</option>
-                  <option value="low-stock">Low Stock</option>
-                  <option value="out-of-stock">Out of Stock</option>
-                </select>
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
+                      </svg>
+                      Updating...
+                    </span>
+                  ) : (
+                    'Update Inventory Item'
+                  )}
+                </motion.button>
               </div>
-
-              {/* Brand */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Brand</label>
-                <input
-                  type="text"
-                  name="Brand"
-                  value={formData.Brand}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter brand"
-                  required
-                />
-              </div>
-
-              {/* Sizes */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Sizes (comma-separated)</label>
-                <input
-                  type="text"
-                  name="Sizes"
-                  value={formData.Sizes.join(", ")}
-                  onChange={(e) => handleArrayChange(e, "Sizes")}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="e.g., S, M, L"
-                />
-              </div>
-
-              {/* Colors */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Colors (comma-separated)</label>
-                <input
-                  type="text"
-                  name="Colors"
-                  value={formData.Colors.join(", ")}
-                  onChange={(e) => handleArrayChange(e, "Colors")}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="e.g., Red, Blue"
-                />
-              </div>
-
-              {/* Gender */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Gender</label>
-                <select
-                  name="Gender"
-                  value={formData.Gender}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
-                  required
-                >
-                  <option value="Men">Men</option>
-                  <option value="Women">Women</option>
-                  <option value="Unisex">Unisex</option>
-                </select>
-              </div>
-
-              {/* Style */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Style</label>
-                <select
-                  name="Style"
-                  value={formData.Style}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor bg-white text-DarkColor"
-                  required
-                >
-                  <option value="Casual">Casual</option>
-                  <option value="Formal">Formal</option>
-                  <option value="Athletic">Athletic</option>
-                </select>
-              </div>
-
-              {/* Supplier Name */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Supplier Name</label>
-                <input
-                  type="text"
-                  name="SupplierName"
-                  value={formData.SupplierName}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter supplier name"
-                  required
-                />
-              </div>
-
-              {/* Supplier Contact */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Supplier Contact</label>
-                <input
-                  type="text"
-                  name="SupplierContact"
-                  value={formData.SupplierContact}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter supplier contact"
-                  required
-                />
-              </div>
-
-              {/* Image Upload */}
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2">Item Image</label>
-                {imagePreview && (
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="mt-2 mb-2 max-w-xs rounded"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23cccccc"/><text x="50%" y="50%" font-size="12" text-anchor="middle" dy=".3em" fill="%23666666">No Image</text></svg>`;
-                    }}
-                  />
-                )}
-                <input
-                  type="file"
-                  name="image"
-                  onChange={handleFileChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  accept="image/*"
-                />
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-DarkColor text-white p-4 rounded-lg flex items-center justify-center hover:opacity-90 transition-all font-bold shadow-lg disabled:opacity-50"
-              >
-                {loading ? (
-                  <ClipLoader color="#fff" size={24} className="mr-2" />
-                ) : (
-                  <MdInventory className="mr-2" size={24} />
-                )}
-                {loading ? "Updating..." : "Update Inventory Item"}
-              </button>
             </>
           )}
         </form>
