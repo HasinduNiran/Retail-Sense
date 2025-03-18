@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import {
     createInventory,
     getAllInventory,
@@ -14,13 +15,20 @@ import {
 
 const router = express.Router();
 
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Configure multer for file storage
 const storage = multer.diskStorage({
     destination: function(req, file, cb) {
-        cb(null, 'uploads/'); // Make sure this directory exists
+        const uploadPath = path.join(__dirname, '../../uploads/inventory');
+        cb(null, uploadPath);
     },
     filename: function(req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname); // Timestamp + original filename
+        // Clean the original filename to remove spaces and special characters
+        const cleanFileName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '-').toLowerCase();
+        cb(null, `${Date.now()}-${cleanFileName}`);
     }
 });
 
@@ -41,23 +49,16 @@ const upload = multer({
     }
 });
 
-// Routes that need image upload handling
-router.post('/', upload.single('image'), createInventory);
-router.put('/:id', upload.single('image'), updateInventory);
-
-// Basic routes without file handling
-router.get('/', getAllInventory);
-router.get('/:id', getInventoryById);
-router.delete('/:id', deleteInventory);
-
-// The problem with these routes is that they conflict with /:id
-// We need to make them more specific to ensure proper routing
-// Moving them before the /:id route will solve this
-
-// Additional routes
-// These need to be BEFORE the /:id route to avoid conflicts
+// Additional routes - these need to be BEFORE the /:id route to avoid conflicts
 router.get('/category/:category', getInventoryByCategory);
 router.get('/status/low-stock', getLowStockItems);
+
+// Basic routes
+router.get('/', getAllInventory);
+router.get('/:id', getInventoryById);
+router.post('/', upload.single('image'), createInventory);
+router.put('/:id', upload.single('image'), updateInventory);
+router.delete('/:id', deleteInventory);
 router.put('/:id/stock-status', updateStockStatus);
 
 export default router;

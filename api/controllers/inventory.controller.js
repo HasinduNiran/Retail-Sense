@@ -8,9 +8,14 @@ export const createInventory = async (req, res) => {
             return res.status(400).json({ message: 'Image is required' });
         }
 
+        // Convert Windows path to URL-friendly path
+        const imagePath = req.file 
+            ? req.file.path.replace(/\\/g, '/') // Convert backslashes to forward slashes
+            : req.body.image;
+
         const inventoryData = {
             ...req.body,
-            image: req.file ? req.file.path : req.body.image // Use file path or URL
+            image: imagePath
         };
 
         const newInventory = new Inventory(inventoryData);
@@ -61,9 +66,14 @@ export const getInventoryById = async (req, res) => {
 // Update inventory item
 export const updateInventory = async (req, res) => {
     try {
+        // Convert Windows path to URL-friendly path if file is uploaded
+        const imagePath = req.file 
+            ? req.file.path.replace(/\\/g, '/') // Convert backslashes to forward slashes
+            : req.body.image;
+
         const updateData = {
             ...req.body,
-            ...(req.file && { image: req.file.path }),
+            ...(req.file && { image: imagePath }),
             ...(req.body.Sizes && { 
                 Sizes: Array.isArray(req.body.Sizes) ? req.body.Sizes : req.body.Sizes.split(',')
             }),
