@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import ClipLoader from 'react-spinners/ClipLoader';
 import API_CONFIG from '../../config/apiConfig.js';
 
@@ -16,7 +16,23 @@ const RetrievedInventoryTable = () => {
   const fetchRetrievedInventory = async () => {
     try {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`);
-      setRetrievedItems(response.data);
+      
+      // Group items by ItemName and sum their quantities
+      const groupedItems = response.data.reduce((acc, item) => {
+        const existingItem = acc.find(i => i.ItemName === item.ItemName);
+        if (existingItem) {
+          existingItem.retrievedQuantity += item.retrievedQuantity;
+          existingItem.retrievedDates.push(item.retrievedDate);
+        } else {
+          acc.push({
+            ...item,
+            retrievedDates: [item.retrievedDate]
+          });
+        }
+        return acc;
+      }, []);
+
+      setRetrievedItems(groupedItems);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching retrieved inventory:', error);
@@ -45,14 +61,15 @@ const RetrievedInventoryTable = () => {
           <table className="w-full text-left text-DarkColor">
             <thead className="bg-PrimaryColor text-DarkColor">
               <tr>
+                <th className="p-4 font-semibold">Image</th>
                 <th className="p-4 font-semibold">Item Name</th>
                 <th className="p-4 font-semibold">Category</th>
-                <th className="p-4 font-semibold">Retrieved Quantity</th>
+                <th className="p-4 font-semibold">Total Retrieved</th>
                 <th className="p-4 font-semibold">Brand</th>
                 <th className="p-4 font-semibold">Gender</th>
                 <th className="p-4 font-semibold">Style</th>
                 <th className="p-4 font-semibold">Unit Price</th>
-                <th className="p-4 font-semibold">Retrieved Date</th>
+                <th className="p-4 font-semibold">Last Retrieved</th>
               </tr>
             </thead>
             <tbody>
@@ -62,6 +79,13 @@ const RetrievedInventoryTable = () => {
                     key={item._id}
                     className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
                   >
+                    <td className="p-4">
+                      <img
+                        src={`${API_CONFIG.BASE_URL}/${item.image}`}
+                        alt={item.ItemName}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                    </td>
                     <td className="p-4">{item.ItemName}</td>
                     <td className="p-4">{item.Category}</td>
                     <td className="p-4">{item.retrievedQuantity}</td>
@@ -69,12 +93,14 @@ const RetrievedInventoryTable = () => {
                     <td className="p-4">{item.Gender}</td>
                     <td className="p-4">{item.Style}</td>
                     <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : 'N/A'}</td>
-                    <td className="p-4">{format(new Date(item.retrievedDate), 'MMM dd, yyyy HH:mm')}</td>
+                    <td className="p-4">
+                      {format(new Date(Math.max(...item.retrievedDates.map(date => new Date(date)))), 'MMM dd, yyyy HH:mm')}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="p-4 text-center text-gray-500">
+                  <td colSpan="9" className="p-4 text-center text-gray-500">
                     No retrieved items found
                   </td>
                 </tr>

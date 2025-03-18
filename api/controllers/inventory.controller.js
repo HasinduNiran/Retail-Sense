@@ -220,18 +220,18 @@ export const updateStockStatus = async (req, res) => {
                 Category: inventoryItem.Category,
                 retrievedQuantity,
                 Brand: inventoryItem.Brand,
-                Sizes: inventoryItem.Sizes,
-                Colors: inventoryItem.Colors,
-                Gender: inventoryItem.Gender,
+                Sizes: inventoryItem.Sizes || [],
+                Colors: inventoryItem.Colors || [],
+                Gender: inventoryItem.Gender || 'Unisex',
                 Style: inventoryItem.Style,
                 image: inventoryItem.image,
-                unitPrice: inventoryItem.unitPrice || unitPrice
+                unitPrice: inventoryItem.unitPrice || null
             });
 
             await retrievedItem.save();
         }
 
-        // Update stock status based on new quantity
+        // Update stock status based on new quantity and reorder threshold
         let stockStatus = 'in-stock';
         if (newQuantity <= 0) {
             stockStatus = 'out-of-stock';
@@ -246,7 +246,7 @@ export const updateStockStatus = async (req, res) => {
                 $set: { 
                     Quantity: newQuantity, 
                     StockStatus: stockStatus,
-                    ...(action === 'add' && unitPrice && { unitPrice })
+                    ...(action === 'add' && unitPrice && { unitPrice: parseFloat(unitPrice) })
                 } 
             },
             { new: true }
@@ -254,6 +254,7 @@ export const updateStockStatus = async (req, res) => {
 
         res.json(updatedInventory);
     } catch (error) {
+        console.error('Error updating stock status:', error);
         res.status(400).json({ message: error.message });
     }
 };

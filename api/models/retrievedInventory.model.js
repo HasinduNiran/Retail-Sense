@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 const retrievedInventorySchema = new mongoose.Schema({
     inventoryID: {
         type: Number,
-        required: true,
-        ref: 'Inventory'
+        required: true
     },
     ItemName: {
         type: String,
@@ -17,25 +16,25 @@ const retrievedInventorySchema = new mongoose.Schema({
     retrievedQuantity: {
         type: Number,
         required: true,
-        min: 1
+        min: 0
     },
     Brand: {
         type: String,
         required: true
     },
-    Sizes: {
-        type: [String],
-        required: true
-    },
-    Colors: {
-        type: [String],
-        required: true
-    },
+    Sizes: [{
+        type: String,
+        required: false
+    }],
+    Colors: [{
+        type: String,
+        required: false
+    }],
     Gender: {
         type: String,
-        enum: ['Men', 'Women', 'Unisex'], // Add 'Men' to allowed values
+        enum: ['Men', 'Women', 'Unisex'],
         required: false
-      },
+    },
     Style: {
         type: String,
         required: true
@@ -46,12 +45,16 @@ const retrievedInventorySchema = new mongoose.Schema({
     },
     unitPrice: {
         type: Number,
-        required: false  // Make unit price optional
-      },
+        required: false,
+        min: 0,
+        default: null
+    },
     retrievedDate: {
         type: Date,
         default: Date.now
     }
+}, {
+    timestamps: true
 });
 
 const RetrievedInventory = mongoose.model('RetrievedInventory', retrievedInventorySchema);
