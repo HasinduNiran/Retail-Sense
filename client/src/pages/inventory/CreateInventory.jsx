@@ -11,7 +11,6 @@ import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 function CreateInventory() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    inventoryID: "",
     ItemName: "",
     Category: "",
     reorderThreshold: "",
@@ -25,16 +24,25 @@ function CreateInventory() {
     Style: "Casual",
     SupplierName: "",
     SupplierContact: "",
+    image: null, // Changed to handle file or URL
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Handle form input changes
+  // Handle text input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  // Handle file input change
+  const handleFileChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      image: e.target.files[0],
     }));
   };
 
@@ -54,6 +62,11 @@ function CreateInventory() {
     setError(null);
 
     // Basic validation
+    if (!formData.image) {
+      setError("Image is required");
+      setLoading(false);
+      return;
+    }
     if (formData.Quantity < 0 || formData.reorderThreshold < 0) {
       setError("Quantity and Reorder Threshold cannot be negative");
       setLoading(false);
@@ -61,20 +74,28 @@ function CreateInventory() {
     }
 
     try {
-      const inventoryData = {
-        ...formData,
-        inventoryID: Number(formData.inventoryID),
-        reorderThreshold: Number(formData.reorderThreshold),
-        Quantity: Number(formData.Quantity),
-      };
+      const formDataToSend = new FormData();
+      
+      // Append all fields to FormData
+      Object.keys(formData).forEach((key) => {
+        if (key === "Sizes" || key === "Colors") {
+          formDataToSend.append(key, formData[key].join(","));
+        } else if (key === "image") {
+          formDataToSend.append("image", formData.image);
+        } else {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Convert numeric fields
+      formDataToSend.set("reorderThreshold", Number(formData.reorderThreshold));
+      formDataToSend.set("Quantity", Number(formData.Quantity));
 
       const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`;
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(inventoryData),
+        body: formDataToSend,
+        // Note: Don't set Content-Type header manually with FormData
       });
 
       const result = await response.json();
@@ -129,30 +150,12 @@ function CreateInventory() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
               {error}
             </div>
           )}
-
-          {/* Inventory ID */}
-          <div className="bg-PrimaryColor p-4 rounded-lg">
-            <label className="block text-DarkColor font-medium mb-2 flex items-center">
-              <BsTag className="mr-2" />
-              Inventory ID
-            </label>
-            <input
-              type="number"
-              name="inventoryID"
-              value={formData.inventoryID}
-              onChange={handleChange}
-              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-              placeholder="Enter unique ID"
-              required
-              min="1"
-            />
-          </div>
 
           {/* Item Name */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
@@ -341,6 +344,19 @@ function CreateInventory() {
               onChange={handleChange}
               className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
               placeholder="Enter supplier contact"
+              required
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="block text-DarkColor font-medium mb-2">Item Image</label>
+            <input
+              type="file"
+              name="image"
+              onChange={handleFileChange}
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+              accept="image/*"
               required
             />
           </div>

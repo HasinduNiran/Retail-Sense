@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEdit, FiTrash2 } from "react-icons/fi";
@@ -12,18 +12,18 @@ function InventoryManagementAll() {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
 
-  // Fetch all inventory items on component mount
-  useEffect(() => {
-    fetchInventory();
-  }, []);
-
-  const fetchInventory = async () => {
+  // Fetch all inventory items with pagination
+  const fetchInventory = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`; // Using INVENTORY endpoint
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}?page=${page}&limit=${limit}`;
+      console.log("Fetching from URL:", url); // Debug: Log the URL
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -32,13 +32,16 @@ function InventoryManagementAll() {
       });
 
       const result = await response.json();
+      console.log("API Response:", result); // Debug: Log the full response
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to fetch inventory items");
       }
 
-      setInventoryItems(result); // Backend returns array directly
+      setInventoryItems(result.items);
+      setTotalPages(result.pages);
     } catch (err) {
+      console.error("Fetch Error:", err.message);
       setError(err.message);
       Swal.fire({
         icon: "error",
@@ -49,7 +52,14 @@ function InventoryManagementAll() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit]);
+
+  useEffect(() => {
+    const loadInventory = async () => {
+      await fetchInventory();
+    };
+    loadInventory();
+  }, [fetchInventory]);
 
   // Handle Delete
   const handleDelete = async (inventoryID) => {
@@ -78,7 +88,7 @@ function InventoryManagementAll() {
             throw new Error(result.message || "Failed to delete inventory item");
           }
 
-          setInventoryItems(inventoryItems.filter((item) => item.inventoryID !== inventoryID));
+          await fetchInventory();
           Swal.fire({
             icon: "success",
             title: "Deleted!",
@@ -105,6 +115,15 @@ function InventoryManagementAll() {
   // Handle Add Navigation
   const handleAdd = () => {
     navigate("/add-inventory");
+  };
+
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (page < totalPages) setPage(page + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) setPage(page - 1);
   };
 
   return (
@@ -153,71 +172,140 @@ function InventoryManagementAll() {
             <ClipLoader color="#89198f" size={50} />
           </div>
         ) : (
-          /* Inventory Table */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-DarkColor">
-              <thead className="bg-PrimaryColor text-DarkColor">
-                <tr>
-                  <th className="p-4 font-semibold">ID</th>
-                  <th className="p-4 font-semibold">Item Name</th>
-                  <th className="p-4 font-semibold">Category</th>
-                  <th className="p-4 font-semibold">Quantity</th>
-                  <th className="p-4 font-semibold">Reorder Threshold</th>
-                  <th className="p-4 font-semibold">Stock Status</th>
-                  <th className="p-4 font-semibold">Location</th>
-                  <th className="p-4 font-semibold">Brand</th>
-                  <th className="p-4 font-semibold">Gender</th>
-                  <th className="p-4 font-semibold">Style</th>
-                  <th className="p-4 font-semibold">Supplier</th>
-                  <th className="p-4 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventoryItems.length > 0 ? (
-                  inventoryItems.map((item) => (
-                    <tr
-                      key={item.inventoryID}
-                      className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
-                    >
-                      <td className="p-4">{item.inventoryID}</td>
-                      <td className="p-4">{item.ItemName}</td>
-                      <td className="p-4">{item.Category}</td>
-                      <td className="p-4">{item.Quantity}</td>
-                      <td className="p-4">{item.reorderThreshold}</td>
-                      <td className="p-4">{item.StockStatus}</td>
-                      <td className="p-4">{item.Location}</td>
-                      <td className="p-4">{item.Brand}</td>
-                      <td className="p-4">{item.Gender}</td>
-                      <td className="p-4">{item.Style}</td>
-                      <td className="p-4">{item.SupplierName}</td>
-                      <td className="p-4 flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(item.inventoryID)}
-                          className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
-                          title="Edit"
+          <>
+            {/* Inventory Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-DarkColor">
+                <thead className="bg-PrimaryColor text-DarkColor">
+                  <tr>
+                    <th className="p-4 font-semibold">ID</th>
+                    <th className="p-4 font-semibold">Image</th>
+                    <th className="p-4 font-semibold">Item Name</th>
+                    <th className="p-4 font-semibold">Category</th>
+                    <th className="p-4 font-semibold">Quantity</th>
+                    <th className="p-4 font-semibold">Reorder Threshold</th>
+                    <th className="p-4 font-semibold">Stock Status</th>
+                    <th className="p-4 font-semibold">Location</th>
+                    <th className="p-4 font-semibold">Brand</th>
+                    <th className="p-4 font-semibold">Gender</th>
+                    <th className="p-4 font-semibold">Style</th>
+                    <th className="p-4 font-semibold">Supplier</th>
+                    <th className="p-4 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.isArray(inventoryItems) && inventoryItems.length > 0 ? (
+                    inventoryItems.map((item) => {
+                      // Debug log to see the image field
+                      console.log('Item data:', {
+                        itemName: item.ItemName,
+                        imageField: item.image,
+                        fullItem: item
+                      });
+
+                      // Construct the full image URL - handle both image and Image fields
+                      const imageField = item.image || item.Image;
+                      const imageUrl = imageField
+                        ? imageField.startsWith("http")
+                          ? imageField
+                          : `${API_CONFIG.BASE_URL}/${imageField.replace(/\\/g, '/')}` // Convert Windows path to URL path
+                        : null;
+
+                      return (
+                        <tr
+                          key={item.inventoryID || item._id}
+                          className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
                         >
-                          <FiEdit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.inventoryID)}
-                          className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
-                          title="Delete"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
+                          <td className="p-4">{item.inventoryID || item._id}</td>
+                          <td className="p-4">
+                            {imageField ? (
+                              <img
+                                src={imageUrl}
+                                alt={item.ItemName}
+                                className="w-12 h-12 object-cover rounded-md"
+                                onError={(e) => {
+                                  console.error(`Image load error for ${item.ItemName}. URL attempted: ${imageUrl}`);
+                                  e.target.onerror = null; // Prevent infinite loop
+                                  e.target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><rect width="50" height="50" fill="%23cccccc"/><text x="50%" y="50%" font-size="8" text-anchor="middle" dy=".3em" fill="%23666666">No Image</text></svg>`;
+                                }}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center">
+                                <span className="text-xs text-gray-500">No Image</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4">{item.ItemName}</td>
+                          <td className="p-4">{item.Category}</td>
+                          <td className="p-4">{item.Quantity}</td>
+                          <td className="p-4">{item.reorderThreshold}</td>
+                          <td className="p-4">{item.StockStatus}</td>
+                          <td className="p-4">{item.Location}</td>
+                          <td className="p-4">{item.Brand}</td>
+                          <td className="p-4">{item.Gender}</td>
+                          <td className="p-4">{item.Style}</td>
+                          <td className="p-4">{item.SupplierName}</td>
+                          <td className="p-4 flex space-x-2">
+                            <button
+                              onClick={() => handleEdit(item.inventoryID || item._id)}
+                              className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
+                              title="Edit"
+                            >
+                              <FiEdit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.inventoryID || item._id)}
+                              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                              title="Delete"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="13" className="p-4 text-center text-gray-500">
+                        No inventory items found
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="12" className="p-4 text-center text-gray-500">
-                      No inventory items found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-4">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={page === 1}
+                  className={`px-4 py-2 rounded-lg ${
+                    page === 1
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor"
+                  }`}
+                >
+                  Previous
+                </button>
+                <span className="text-DarkColor">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={page === totalPages}
+                  className={`px-4 py-2 rounded-lg ${
+                    page === totalPages
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor"
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.div>

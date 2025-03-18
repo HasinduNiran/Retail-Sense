@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors'; 
+import fs from 'fs';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -24,10 +25,29 @@ app.use(cors({
   allowedHeaders: ['Content-Type'], 
 }));
 
+// Serve static files from the root uploads directory
+const uploadsDir = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsDir, {
+  fallthrough: true, // Pass to next middleware if file not found
+  index: false, // Disable directory indexing
+}));
+
+// Ensure uploads directory exists
+const ensureUploadsDir = () => {
+    const dirs = ['inventory', 'promotions'];
+    dirs.forEach(dir => {
+        const fullPath = path.join(uploadsDir, dir);
+        if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+            console.log(`Created directory: ${fullPath}`);
+        }
+    });
+};
+ensureUploadsDir();
+
 // Routes
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/inventory', InventoryRoutes);
-
 
 // MongoDB Connection
 const connectDB = async () => {
