@@ -3,39 +3,10 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import InventoryManagementAll from "../inventory/InventoryManagementAll";
 import CreateInventory from "../../pages/inventory/CreateInventory";
+import RetrievedInventoryTable from "../inventory/RetrievedInventoryTable";
 
 export default function InventoryManagement() {
   const [activeTab, setActiveTab] = useState("all"); // State to manage active tab
-
-  // Tab content variants for animations
-  const tabVariants = {
-    initial: { opacity: 0, x: -20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 20 },
-  };
-
-  // Function to render the content of the active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "all":
-        return <InventoryManagementAll />;
-      case "add":
-        return (
-          <motion.div
-            variants={tabVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-            {/* Replace with your View Items component */}
-            <CreateInventory />
-          </motion.div>
-        );
-
-      default:
-        return null;
-    }
-  };
 
   return (
     <motion.div
@@ -58,9 +29,8 @@ export default function InventoryManagement() {
         style={{ borderColor: "#e3d5ca" }} // SecondaryColor for the border
       >
         <div
-          className={`cursor-pointer px-4 py-2 -mb-1 ${
-            activeTab === "all" ? "border-b-4" : "text-gray-500"
-          }`}
+          className={`cursor-pointer px-4 py-2 -mb-1 ${activeTab === "all" ? "border-b-4" : "text-gray-500"
+            }`}
           style={{
             borderColor: activeTab === "all" ? "#d4a373" : "transparent", // DarkColor for active tab border
             color: activeTab === "all" ? "#d4a373" : "#a98467", // DarkColor for active tab text, ExtraDarkColor for inactive
@@ -70,9 +40,8 @@ export default function InventoryManagement() {
           Manage All Items
         </div>
         <div
-          className={`cursor-pointer px-4 py-2 -mb-1 ${
-            activeTab === "add" ? "border-b-4" : "text-gray-500"
-          }`}
+          className={`cursor-pointer px-4 py-2 -mb-1 ${activeTab === "add" ? "border-b-4" : "text-gray-500"
+            }`}
           style={{
             borderColor: activeTab === "add" ? "#d4a373" : "transparent",
             color: activeTab === "add" ? "#d4a373" : "#a98467",
@@ -81,20 +50,32 @@ export default function InventoryManagement() {
         >
           Add Item
         </div>
+        <div
+          className={`cursor-pointer px-4 py-2 -mb-1 ${activeTab === "retrieved" ? "border-b-4" : "text-gray-500"
+            }`}
+          style={{
+            borderColor: activeTab === "retrieved" ? "#d4a373" : "transparent", // DarkColor for active tab border
+            color: activeTab === "retrieved" ? "#d4a373" : "#a98467", // DarkColor for active tab text, ExtraDarkColor for inactive
+          }}
+          onClick={() => setActiveTab("retrieved")}
+        >
+          Retrieved Items
+        </div>
       </div>
 
       {/* Render Tab Content with Animation */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeTab} // Ensure that the content changes with the tab
-          variants={tabVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.3 }} // Customize duration for smooth transition
+          key={activeTab}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
           className="mt-4"
         >
-          {renderTabContent()}
+          {activeTab === "all" && <InventoryManagementAll />}
+          {activeTab === "add" && <CreateInventory />}
+          {activeTab === "retrieved" && <RetrievedInventoryTable />}
         </motion.div>
       </AnimatePresence>
     </motion.div>

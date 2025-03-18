@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import {
     createInventory,
     getAllInventory,
@@ -10,7 +11,8 @@ import {
     deleteInventory,
     getInventoryByCategory,
     getLowStockItems,
-    updateStockStatus
+    updateStockStatus,
+    getRetrievedInventory
 } from '../controllers/inventory.controller.js';
 
 const router = express.Router();
@@ -19,26 +21,38 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads');
+const inventoryUploadsDir = path.join(uploadsDir, 'inventory');
+
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(inventoryUploadsDir)) {
+    fs.mkdirSync(inventoryUploadsDir);
+}
+
 // Configure multer for file storage
 const storage = multer.diskStorage({
     destination: function(req, file, cb) {
-        const uploadPath = path.join(__dirname, '../../uploads/inventory');
-        cb(null, uploadPath);
+        cb(null, inventoryUploadsDir);
     },
     filename: function(req, file, cb) {
-        // Clean the original filename to remove spaces and special characters
-        const cleanFileName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '-').toLowerCase();
-        cb(null, `${Date.now()}-${cleanFileName}`);
+        const uniqueSuffix = Date.now();
+        cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, ''));
     }
 });
 
 // File filter to only accept images
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Not an image! Please upload only images.'), false);
+    const filetypes = /jpeg|jpg|png|gif/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+    if (mimetype && extname) {
+        return cb(null, true);
     }
+    return cb(null, false);
 };
 
 const upload = multer({ 
@@ -59,6 +73,11 @@ router.get('/:id', getInventoryById);
 router.post('/', upload.single('image'), createInventory);
 router.put('/:id', upload.single('image'), updateInventory);
 router.delete('/:id', deleteInventory);
-router.put('/:id/stock-status', updateStockStatus);
+
+// Stock status update route - updated to handle both add and retrieve
+router.put('/:inventoryID/stock-status', updateStockStatus);
+
+// New route to get retrieved inventory
+router.get('/retrieved/all', getRetrievedInventory);
 
 export default router;

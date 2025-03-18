@@ -1,4 +1,10 @@
 import Inventory from '../models/inventory.model.js';
+import RetrievedInventory from '../models/retrievedInventory.model.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Create new inventory item
 export const createInventory = async (req, res) => {
@@ -8,21 +14,51 @@ export const createInventory = async (req, res) => {
             return res.status(400).json({ message: 'Image is required' });
         }
 
-        // Convert Windows path to URL-friendly path
-        const imagePath = req.file 
-            ? req.file.path.replace(/\\/g, '/') // Convert backslashes to forward slashes
-            : req.body.image;
+        // Handle image path
+        let imagePath;
+        if (req.file) {
+            // For form uploads, store relative path
+            imagePath = path.join('uploads', 'inventory', path.basename(req.file.path)).replace(/\\/g, '/');
+        } else {
+            // For direct API requests, ensure path is relative
+            const absolutePath = req.body.image;
+            if (absolutePath.includes('uploads/inventory')) {
+                // If already in correct format, use as is
+                imagePath = absolutePath;
+            } else {
+                // Convert absolute path to relative path
+                imagePath = path.join('uploads', 'inventory', path.basename(absolutePath)).replace(/\\/g, '/');
+            }
+        }
 
-        const inventoryData = {
+        // Parse numeric fields
+        const parsedData = {
             ...req.body,
+            Quantity: parseInt(req.body.Quantity),
+            reorderThreshold: parseInt(req.body.reorderThreshold),
             image: imagePath
         };
 
-        const newInventory = new Inventory(inventoryData);
+        // Handle arrays
+        if (req.body.Sizes) {
+            parsedData.Sizes = req.body.Sizes.split(',').map(size => size.trim());
+        }
+        if (req.body.Colors) {
+            parsedData.Colors = req.body.Colors.split(',').map(color => color.trim());
+        }
+
+        const newInventory = new Inventory(parsedData);
         const savedInventory = await newInventory.save();
         res.status(201).json(savedInventory);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error('Error creating inventory:', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                message: 'Validation Error', 
+                errors: Object.values(error.errors).map(err => err.message)
+            });
+        }
+        res.status(500).json({ message: 'Failed to create inventory item', error: error.message });
     }
 };
 
@@ -66,14 +102,26 @@ export const getInventoryById = async (req, res) => {
 // Update inventory item
 export const updateInventory = async (req, res) => {
     try {
-        // Convert Windows path to URL-friendly path if file is uploaded
-        const imagePath = req.file 
-            ? req.file.path.replace(/\\/g, '/') // Convert backslashes to forward slashes
-            : req.body.image;
+        // Handle image path if file is uploaded
+        let imagePath;
+        if (req.file) {
+            // For form uploads, store relative path
+            imagePath = path.join('uploads', 'inventory', path.basename(req.file.path)).replace(/\\/g, '/');
+        } else if (req.body.image) {
+            // For direct API requests, ensure path is relative
+            const absolutePath = req.body.image;
+            if (absolutePath.includes('uploads/inventory')) {
+                // If already in correct format, use as is
+                imagePath = absolutePath;
+            } else {
+                // Convert absolute path to relative path
+                imagePath = path.join('uploads', 'inventory', path.basename(absolutePath)).replace(/\\/g, '/');
+            }
+        }
 
         const updateData = {
             ...req.body,
-            ...(req.file && { image: imagePath }),
+            ...(imagePath && { image: imagePath }),
             ...(req.body.Sizes && { 
                 Sizes: Array.isArray(req.body.Sizes) ? req.body.Sizes : req.body.Sizes.split(',')
             }),
@@ -145,31 +193,79 @@ export const getLowStockItems = async (req, res) => {
     }
 };
 
-// Update stock status and quantity
+// Update stock status
 export const updateStockStatus = async (req, res) => {
     try {
-        const inventory = await Inventory.findOne({ 
-            inventoryID: parseInt(req.params.id) 
-        });
-        
-        if (!inventory) {
+        const { inventoryID } = req.params;
+        const { Quantity, action, unitPrice } = req.body;
+
+        // Find the inventory item
+        const inventoryItem = await Inventory.findOne({ inventoryID: parseInt(inventoryID) });
+        if (!inventoryItem) {
             return res.status(404).json({ message: 'Inventory item not found' });
         }
 
-        // Allow quantity update if provided in body
-        if (req.body.Quantity !== undefined) {
-            inventory.Quantity = parseInt(req.body.Quantity);
+        // Update quantity
+        const newQuantity = parseInt(Quantity);
+        if (isNaN(newQuantity) || newQuantity < 0) {
+            return res.status(400).json({ message: 'Invalid quantity' });
         }
 
-        // Update stock status based on quantity and threshold
-        inventory.StockStatus = 
-            inventory.Quantity <= 0 ? 'out-of-stock' :
-            inventory.Quantity <= inventory.reorderThreshold ? 'low-stock' :
-            'in-stock';
+        // If this is a retrieve action, save to RetrievedInventory
+        if (action === 'retrieve') {
+            const retrievedQuantity = inventoryItem.Quantity - newQuantity;
+            const retrievedItem = new RetrievedInventory({
+                inventoryID: inventoryItem.inventoryID,
+                ItemName: inventoryItem.ItemName,
+                Category: inventoryItem.Category,
+                retrievedQuantity,
+                Brand: inventoryItem.Brand,
+                Sizes: inventoryItem.Sizes,
+                Colors: inventoryItem.Colors,
+                Gender: inventoryItem.Gender,
+                Style: inventoryItem.Style,
+                image: inventoryItem.image,
+                unitPrice: inventoryItem.unitPrice || unitPrice
+            });
 
-        const updatedInventory = await inventory.save();
+            await retrievedItem.save();
+        }
+
+        // Update stock status based on new quantity
+        let stockStatus = 'in-stock';
+        if (newQuantity <= 0) {
+            stockStatus = 'out-of-stock';
+        } else if (newQuantity <= inventoryItem.reorderThreshold) {
+            stockStatus = 'low-stock';
+        }
+
+        // Update the inventory item
+        const updatedInventory = await Inventory.findOneAndUpdate(
+            { inventoryID: parseInt(inventoryID) },
+            { 
+                $set: { 
+                    Quantity: newQuantity, 
+                    StockStatus: stockStatus,
+                    ...(action === 'add' && unitPrice && { unitPrice })
+                } 
+            },
+            { new: true }
+        );
+
         res.json(updatedInventory);
     } catch (error) {
-        res.status(500).json({ message: 'Failed to update stock status', error: error.message });
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// Get all retrieved inventory items
+export const getRetrievedInventory = async (req, res) => {
+    try {
+        const retrievedItems = await RetrievedInventory.find()
+            .sort({ retrievedDate: -1 }); // Sort by most recent first
+
+        res.json(retrievedItems);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
