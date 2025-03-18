@@ -114,3 +114,4 @@ const RetrievedInventoryTable = () => {
 };
 
 export default RetrievedInventoryTable;
+Lasal
