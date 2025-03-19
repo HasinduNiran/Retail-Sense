@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { FiX, FiPlus } from 'react-icons/fi';
+import { FiX, FiPlus, FiArrowRight, FiRotateCcw } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import API_CONFIG from '../../config/apiConfig';
 import PropTypes from 'prop-types';
@@ -16,14 +16,24 @@ const RetrievedInventoryTable = () => {
   const fetchRetrievedInventory = async () => {
     try {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`);
+      
+      // Fetch original inventory items to get colors and sizes
+      const inventoryResponse = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`);
+      const inventoryItems = inventoryResponse.data.items || [];
+
       const groupedItems = response.data.reduce((acc, item) => {
         const existingItem = acc.find(i => i.ItemName === item.ItemName);
+        // Find matching inventory item to get colors and sizes
+        const inventoryItem = inventoryItems.find(i => i._id === item.inventoryID);
+        
         if (existingItem) {
           existingItem.retrievedQuantity += item.retrievedQuantity;
           existingItem.retrievedDates.push(item.retrievedDate);
         } else {
           acc.push({
             ...item,
+            colors: inventoryItem?.colors || [],
+            sizes: inventoryItem?.sizes || [],
             retrievedDates: [item.retrievedDate],
           });
         }
@@ -48,33 +58,60 @@ const RetrievedInventoryTable = () => {
     fetchRetrievedInventory();
   }, []);
 
+  const handleRevert = async (item) => {
+    try {
+      // First, update the inventory quantity
+      await axios.put(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}/stock-status`,
+        {
+          action: 'add',
+          Quantity: item.retrievedQuantity
+        }
+      );
+
+      // Then delete the retrieved item
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/${item._id}`
+      );
+
+      // Update local state
+      setRetrievedItems(prev => prev.filter(i => i._id !== item._id));
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Item reverted to inventory successfully!',
+        confirmButtonColor: '#89198f',
+      });
+    } catch (error) {
+      console.error('Error reverting item:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Failed to revert item',
+        confirmButtonColor: '#89198f',
+      });
+    }
+  };
+
   const handleSendToStore = async (item, unitPrice) => {
     try {
-      // First, update the unit price and mark as in-stock
+      // Update the unit price
       const response = await axios.post(
         `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/send-to-store/${item._id}`,
         { unitPrice: parseFloat(unitPrice) }
       );
 
       if (response.status === 200) {
-        // Then update the stock status and quantity
-        await axios.put(
-          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}/stock-status`,
-          {
-            action: 'send-to-store',
-            Quantity: item.retrievedQuantity // Set quantity to the retrieved amount
-          }
-        );
-
-        // Remove item from retrieved items list in UI
+        // Update the item in the table with the new unit price
         setRetrievedItems(prev => 
-          prev.filter(i => i._id !== item._id)
+          prev.map(i => i._id === item._id ? { ...i, unitPrice: parseFloat(unitPrice) } : i)
         );
       
         Swal.fire({
           icon: 'success',
           title: 'Success',
-          text: 'Item sent to store successfully!',
+          text: 'Unit price updated successfully!',
           confirmButtonColor: '#89198f',
         });
 
@@ -84,11 +121,11 @@ const RetrievedInventoryTable = () => {
         setSelectedItem(null);
       }
     } catch (error) {
-      console.error('Error sending item to store:', error);
+      console.error('Error updating unit price:', error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error.response?.data?.message || 'Failed to send item to store',
+        text: error.response?.data?.message || 'Failed to update unit price',
         confirmButtonColor: '#89198f',
       });
     }
@@ -98,6 +135,49 @@ const RetrievedInventoryTable = () => {
     if (!imagePath) return '/default-img.jpg';
     const relativePath = imagePath.replace(/.*uploads[/\\]/, 'uploads/');
     return `${API_CONFIG.BASE_URL}/${relativePath}`;
+  };
+
+  // Color rendering logic
+  const renderColors = (colors) => {
+    if (!colors || !colors.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {colors.map((color, index) => {
+          const colorValue = color.toLowerCase();
+          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
+          return (
+            <div
+              key={index}
+              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm"
+              style={{ 
+                backgroundColor: colorValue,
+                border: isLight ? '1px solid #d1d5db' : 'none'
+              }}
+              title={color}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Size rendering logic
+  const renderSizes = (sizes) => {
+    if (!sizes || !sizes.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {sizes.map((size, index) => (
+          <span
+            key={index}
+            className="inline-flex items-center justify-center min-w-[2rem] h-6 px-2 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full"
+          >
+            {size}
+          </span>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -127,6 +207,8 @@ const RetrievedInventoryTable = () => {
                 <th className="p-4 font-semibold">Retrieved Qty</th>
                 <th className="p-4 font-semibold">Brand</th>
                 <th className="p-4 font-semibold">Style</th>
+                <th className="p-4 font-semibold">Colors</th>
+                <th className="p-4 font-semibold">Sizes</th>
                 <th className="p-4 font-semibold">Unit Price</th>
                 <th className="p-4 font-semibold">Last Retrieved</th>
                 <th className="p-4 font-semibold rounded-tr-lg">Actions</th>
@@ -143,35 +225,48 @@ const RetrievedInventoryTable = () => {
                       <img
                         src={getImageUrl(item.image)}
                         alt={item.ItemName}
-                        className="w-16 h-16 object-cover rounded-lg shadow-sm"
+                        className="w-16 h-16 object-cover rounded-lg"
                         onError={(e) => { e.target.src = '/default-img.jpg' }}
                       />
                     </td>
-                    <td className="p-4 font-medium">{item.ItemName}</td>
+                    <td className="p-4">{item.ItemName}</td>
                     <td className="p-4">{item.Category}</td>
                     <td className="p-4">{item.retrievedQuantity}</td>
-                    <td className="p-4">{item.Brand}</td>
-                    <td className="p-4">{item.Style}</td>
-                    <td className="p-4">{item.unitPrice ? `$${parseFloat(item.unitPrice).toFixed(2)}` : '-'}</td>
+                    <td className="p-4">{item.Brand || '-'}</td>
+                    <td className="p-4">{item.Style || '-'}</td>
+                    <td className="p-4">{renderColors(item.colors)}</td>
+                    <td className="p-4">{renderSizes(item.sizes)}</td>
+                    <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
                     <td className="p-4">
-                      {format(new Date(Math.max(...item.retrievedDates.map(date => new Date(date)))), 'MMM dd, yyyy HH:mm')}
+                      {format(new Date(item.retrievedDates[item.retrievedDates.length - 1]), 'MMM d, yyyy')}
                     </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => {
-                          setSelectedItem(item);
-                          setIsModalOpen(true);
-                        }}
-                        className="bg-DarkColor text-white px-4 py-2 rounded-lg hover:bg-ExtraDarkColor transition-colors focus:outline-none focus:ring-2 focus:ring-DarkColor focus:ring-offset-2"
-                      >
-                        Goto Popup
-                      </button>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-2 text-purple-600 hover:text-purple-800 transition-colors"
+                          title="Go to Popup"
+                        >
+                          <FiArrowRight size={20} />
+                        </button>
+                        <button
+                          onClick={() => handleRevert(item)}
+                          className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Revert to Inventory"
+                        >
+                          <FiRotateCcw size={20} />
+                        </button>
+                      </div>
+
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="p-8 text-center text-gray-500">
+                  <td colSpan="11" className="text-center py-8 text-gray-500">
                     No retrieved items found
                   </td>
                 </tr>
@@ -300,23 +395,7 @@ const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
                 disabled={isSubmitting}
                 className="flex-1 bg-DarkColor text-white py-2 px-4 rounded-lg hover:bg-ExtraDarkColor transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-DarkColor focus:ring-offset-2"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  'Send to Store'
-                )}
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              >
-                Cancel
+                {isSubmitting ? 'Saving...' : 'Save'}
               </button>
             </div>
           </motion.div>

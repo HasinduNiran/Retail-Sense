@@ -71,12 +71,11 @@ export const sendToStore = async (req, res) => {
         return res.status(400).json({ message: 'Valid unit price required' });
       }
   
-      const updatedItem = await Inventory.findByIdAndUpdate(
+      const updatedItem = await RetrievedInventory.findByIdAndUpdate(
         id,
         { 
           $set: { 
-            unitPrice: parseFloat(unitPrice),
-            StockStatus: 'in-stock'  
+            unitPrice: parseFloat(unitPrice)
           } 
         },
         { new: true }
@@ -298,6 +297,27 @@ export const getRetrievedInventory = async (req, res) => {
 
         res.json(retrievedItems);
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Delete retrieved inventory item
+export const deleteRetrievedInventory = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the retrieved item first to make sure it exists
+        const retrievedItem = await RetrievedInventory.findById(id);
+        if (!retrievedItem) {
+            return res.status(404).json({ message: 'Retrieved inventory item not found' });
+        }
+
+        // Delete the retrieved item
+        await RetrievedInventory.findByIdAndDelete(id);
+
+        res.json({ message: 'Retrieved inventory item deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting retrieved inventory item:', error);
         res.status(500).json({ message: error.message });
     }
 };
