@@ -103,7 +103,7 @@ const RetrievedInventoryTable = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-DarkColor"></div>
       </div>
     );
   }
@@ -113,13 +113,13 @@ const RetrievedInventoryTable = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6"
+      className="min-h-screen bg-gradient-to-br from-PrimaryColor to-SecondaryColor p-6"
     >
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold text-purple-800 mb-6">Retrieved Inventory History</h2>
+        <h2 className="text-2xl font-bold text-ExtraDarkColor mb-6">Retrieved Inventory History</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-700">
-            <thead className="bg-purple-100 text-purple-800">
+            <thead className="bg-PrimaryColor text-ExtraDarkColor">
               <tr>
                 <th className="p-4 font-semibold rounded-tl-lg">Image</th>
                 <th className="p-4 font-semibold">Item Name</th>
@@ -162,7 +162,7 @@ const RetrievedInventoryTable = () => {
                           setSelectedItem(item);
                           setIsModalOpen(true);
                         }}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                        className="bg-DarkColor text-white px-4 py-2 rounded-lg hover:bg-ExtraDarkColor transition-colors focus:outline-none focus:ring-2 focus:ring-DarkColor focus:ring-offset-2"
                       >
                         Goto Popup
                       </button>
@@ -257,8 +257,8 @@ const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
               <FiX size={24} />
             </button>
 
-            <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
-              <span className="bg-purple-600 text-white p-2 rounded-full mr-3">
+            <h2 className="text-2xl font-bold text-ExtraDarkColor mb-6 flex items-center">
+              <span className="bg-DarkColor text-white p-2 rounded-full mr-3">
                 <FiPlus size={20} />
               </span>
               Save
@@ -286,7 +286,7 @@ const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
                 type="number"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-DarkColor focus:border-DarkColor transition-colors"
                 placeholder="Enter unit price"
                 min="0"
                 step="0.01"
@@ -298,7 +298,7 @@ const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                className="flex-1 bg-DarkColor text-white py-2 px-4 rounded-lg hover:bg-ExtraDarkColor transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-DarkColor focus:ring-offset-2"
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center">

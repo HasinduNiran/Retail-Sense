@@ -171,19 +171,19 @@ const CreateInventory = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-8"
+      className="min-h-screen bg-gradient-to-br from-PrimaryColor to-SecondaryColor p-8"
     >
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-all"
+            className="p-2 bg-PrimaryColor text-DarkColor rounded-full hover:bg-SecondaryColor transition-all"
           >
             <FiArrowLeft size={24} />
           </button>
-          <h1 className="text-3xl font-extrabold text-purple-800 flex items-center">
-            <span className="mr-3 bg-purple-600 text-white p-2 rounded-full">
+          <h1 className="text-3xl font-extrabold text-ExtraDarkColor flex items-center">
+            <span className="mr-3 bg-DarkColor text-white p-2 rounded-full">
               <FiPlus size={24} />
             </span>
             Create New Inventory Item
@@ -197,7 +197,7 @@ const CreateInventory = () => {
               {/* Image Upload */}
               <div className="relative group">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Item Image</label>
-                <div className="flex items-center justify-center w-full h-64 bg-gray-100 rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 transition-all">
+                <div className="flex items-center justify-center w-full h-64 bg-gray-100 rounded-xl border-2 border-dashed border-SecondaryColor hover:border-DarkColor transition-all">
                   {imagePreview ? (
                     <div className="relative">
                       <img
@@ -218,8 +218,8 @@ const CreateInventory = () => {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center cursor-pointer">
-                      <FiPlus className="text-purple-500 h-12 w-12" />
-                      <span className="mt-2 text-sm font-medium text-purple-600">Upload Image</span>
+                      <FiPlus className="text-DarkColor h-12 w-12" />
+                      <span className="mt-2 text-sm font-medium text-DarkColor">Upload Image</span>
                       <input
                         type="file"
                         name="image"
@@ -241,7 +241,7 @@ const CreateInventory = () => {
                   name="ItemName"
                   value={formData.ItemName}
                   onChange={handleInputChange}
-                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor transition-all"
                   placeholder="e.g., Classic T-Shirt"
                   required
                 />
@@ -253,7 +253,7 @@ const CreateInventory = () => {
                   name="Category"
                   value={formData.Category}
                   onChange={handleInputChange}
-                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                   required
                 >
                   <option value="">Select Category</option>
@@ -269,7 +269,7 @@ const CreateInventory = () => {
                   name="Location"
                   value={formData.Location}
                   onChange={handleInputChange}
-                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                   required
                 >
                   <option value="">Select Location</option>
@@ -295,7 +295,7 @@ const CreateInventory = () => {
                     onClick={() => handleSizeToggle(size)}
                     className={`w-12 h-12 rounded-lg flex items-center justify-center text-sm font-medium transition-all shadow-sm
                       ${formData.Sizes.includes(size)
-                        ? 'bg-purple-600 text-white'
+                        ? 'bg-DarkColor text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                   >
@@ -329,7 +329,7 @@ const CreateInventory = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowColorPicker(true)}
-                  className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-purple-600 hover:bg-gray-200 shadow-sm"
+                  className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-DarkColor hover:bg-gray-200 shadow-sm"
                 >
                   <FiPlus size={16} />
                 </motion.button>
@@ -348,7 +348,7 @@ const CreateInventory = () => {
                       type="text"
                       value={colorInput}
                       onChange={handleColorInputChange}
-                      className="mt-3 w-full p-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                      className="mt-3 w-full p-2 border-2 border-gray-200 rounded-lg focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                       placeholder="#HEXCODE"
                       maxLength={7}
                     />
@@ -363,7 +363,7 @@ const CreateInventory = () => {
                       <button
                         type="button"
                         onClick={handleAddColor}
-                        className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                        className="px-4 py-2 text-sm bg-DarkColor text-white rounded-lg hover:bg-ExtraDarkColor"
                       >
                         Add Color
                       </button>
@@ -383,7 +383,7 @@ const CreateInventory = () => {
                 name="Brand"
                 value={formData.Brand}
                 onChange={handleInputChange}
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., Nike"
                 required
               />
@@ -395,7 +395,7 @@ const CreateInventory = () => {
                 name="Gender"
                 value={formData.Gender}
                 onChange={handleInputChange}
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                 required
               >
                 <option value="">Select Gender</option>
@@ -411,7 +411,7 @@ const CreateInventory = () => {
                 name="Style"
                 value={formData.Style}
                 onChange={handleInputChange}
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                 required
               >
                 <option value="">Select Style</option>
@@ -429,7 +429,7 @@ const CreateInventory = () => {
                 value={formData.Quantity}
                 onChange={handleInputChange}
                 min="0"
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., 50"
                 required
               />
@@ -443,7 +443,7 @@ const CreateInventory = () => {
                 value={formData.reorderThreshold}
                 onChange={handleInputChange}
                 min="0"
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., 10"
                 required
               />
@@ -456,7 +456,7 @@ const CreateInventory = () => {
                 name="SupplierName"
                 value={formData.SupplierName}
                 onChange={handleInputChange}
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., Fashion Co."
                 required
               />
@@ -469,7 +469,7 @@ const CreateInventory = () => {
                 name="SupplierContact"
                 value={formData.SupplierContact}
                 onChange={handleInputChange}
-                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., +1 123-456-7890"
                 required
               />
@@ -483,7 +483,7 @@ const CreateInventory = () => {
               disabled={isSubmitting}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-DarkColor to-ExtraDarkColor text-white py-3 px-6 rounded-lg font-semibold shadow-lg hover:from-ExtraDarkColor hover:to-DarkColor transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center">
