@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => {
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
 
   if (!isOpen || !item) return null;
 
@@ -44,7 +43,6 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
       const updateData = {
         Quantity: newQuantity,
         action, // Add action type (add/retrieve)
-        unitPrice: action === 'add' ? parseFloat(unitPrice) : item.unitPrice // Use existing unit price for retrieval
       };
 
       const response = await fetch(url, {
@@ -70,7 +68,6 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
         confirmButtonColor: '#89198f',
       }).then(() => {
         setQuantity('');
-        setUnitPrice('');
         onClose();
         if (action === 'retrieve') {
           navigate('/retrieved-inventory');
@@ -145,9 +142,6 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
                   <p className="text-gray-600">Current Stock: {item.Quantity}</p>
                   <p className="text-gray-600">Reorder Threshold: {item.reorderThreshold}</p>
                   <p className="text-gray-600">Status: {item.StockStatus}</p>
-                  {item.unitPrice && (
-                    <p className="text-gray-600">Unit Price: ${item.unitPrice.toFixed(2)}</p>
-                  )}
                 </div>
               </div>
             </div>
@@ -166,24 +160,6 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
                 min="1"
               />
             </div>
-
-            {/* Unit Price Input - Only show when adding stock */}
-            {!item.unitPrice && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-DarkColor mb-2">
-                  Unit Price (Required when adding stock)
-                </label>
-                <input
-                  type="number"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-SecondaryColor rounded-lg focus:ring-2 focus:ring-DarkColor focus:border-transparent bg-PrimaryColor text-DarkColor"
-                  placeholder="Enter unit price"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            )}
 
             {/* Action Buttons */}
             <div className="flex gap-4">
@@ -227,8 +203,7 @@ InventoryQuantityModal.propTypes = {
     Gender: PropTypes.string.isRequired,
     Style: PropTypes.string.isRequired,
     image: PropTypes.string,
-    unitPrice: PropTypes.number
-  })
+  }),
 };
 
 export default InventoryQuantityModal;

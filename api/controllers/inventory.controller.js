@@ -62,6 +62,37 @@ export const createInventory = async (req, res) => {
     }
 };
 
+export const sendToStore = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { unitPrice } = req.body;
+  
+      if (!unitPrice || isNaN(unitPrice)) {
+        return res.status(400).json({ message: 'Valid unit price required' });
+      }
+  
+      const updatedItem = await Inventory.findByIdAndUpdate(
+        id,
+        { 
+          $set: { 
+            unitPrice: parseFloat(unitPrice),
+            StockStatus: 'in-stock'  
+          } 
+        },
+        { new: true }
+      );
+  
+      if (!updatedItem) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+  
+      res.json(updatedItem);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+  
 // Get all inventory items with pagination
 export const getAllInventory = async (req, res) => {
     try {
@@ -220,18 +251,18 @@ export const updateStockStatus = async (req, res) => {
                 Category: inventoryItem.Category,
                 retrievedQuantity,
                 Brand: inventoryItem.Brand,
-                Sizes: inventoryItem.Sizes,
-                Colors: inventoryItem.Colors,
-                Gender: inventoryItem.Gender,
+                Sizes: inventoryItem.Sizes || [],
+                Colors: inventoryItem.Colors || [],
+                Gender: inventoryItem.Gender || 'Unisex',
                 Style: inventoryItem.Style,
                 image: inventoryItem.image,
-                unitPrice: inventoryItem.unitPrice || unitPrice
+                unitPrice: inventoryItem.unitPrice || null
             });
 
             await retrievedItem.save();
         }
 
-        // Update stock status based on new quantity
+        // Update stock status based on new quantity and reorder threshold
         let stockStatus = 'in-stock';
         if (newQuantity <= 0) {
             stockStatus = 'out-of-stock';
@@ -246,7 +277,7 @@ export const updateStockStatus = async (req, res) => {
                 $set: { 
                     Quantity: newQuantity, 
                     StockStatus: stockStatus,
-                    ...(action === 'add' && unitPrice && { unitPrice })
+                    ...(action === 'add' && unitPrice && { unitPrice: parseFloat(unitPrice) })
                 } 
             },
             { new: true }
@@ -254,6 +285,7 @@ export const updateStockStatus = async (req, res) => {
 
         res.json(updatedInventory);
     } catch (error) {
+        console.error('Error updating stock status:', error);
         res.status(400).json({ message: error.message });
     }
 };
