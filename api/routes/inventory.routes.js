@@ -13,7 +13,8 @@ import {
     getInventoryByCategory,
     getLowStockItems,
     updateStockStatus,
-    getRetrievedInventory
+    getRetrievedInventory,
+    deleteRetrievedInventory
 } from '../controllers/inventory.controller.js';
 
 const router = express.Router();
@@ -79,7 +80,8 @@ router.post('/send-to-store/:id', sendToStore);
 // Stock status update route - updated to handle both add and retrieve
 router.put('/:inventoryID/stock-status', updateStockStatus);
 
-// New route to get retrieved inventory
+// Retrieved inventory routes
 router.get('/retrieved/all', getRetrievedInventory);
+router.delete('/retrieved/:id', deleteRetrievedInventory);
 
 export default router;
