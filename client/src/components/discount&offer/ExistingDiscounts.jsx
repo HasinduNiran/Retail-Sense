@@ -1,280 +1,487 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  MdInfo,
-  MdDeleteForever,
-  MdSearch,
-  MdSort,
-  MdFileDownload,
-} from "react-icons/md";
-import { FaEdit, FaFilter, FaSpinner } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
-import Swal from "sweetalert2";
-import PromotionReport from "./PromotionReport";
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { FiX, FiPlus, FiEdit } from 'react-icons/fi';
+import Swal from 'sweetalert2';
+import API_CONFIG from '../../config/apiConfig'; // Adjust path as needed
+import PropTypes from 'prop-types';
 
-function DiscountTable() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [searchData, setSearchData] = useState({
-    searchTerm: "",
-    type: "all",
-    sort: "created_at",
-    order: "desc",
-  });
-  const [loading, setLoading] = useState(false);
+const DiscountTable = () => {
+  const [retrievedItems, setRetrievedItems] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const searchTerm = urlParams.get("searchTerm") || "";
-    const type = urlParams.get("type") || "all";
-    const sort = urlParams.get("sort") || "created_at";
-    const order = urlParams.get("order") || "desc";
-    setSearchData({ searchTerm, type, sort, order });
+  // Fetch RetrievedInventory and Promotions
+  const fetchData = async () => {
+    try {
+      const retrievedResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/inventory/retrieved/all`);
+      console.log('Retrieved Response:', retrievedResponse.data);
+      const retrievedData = retrievedResponse.data.data || retrievedResponse.data || [];
+      const parsedItems = retrievedData.map(item => {
+        const sizesString = item.Sizes ? item.Sizes.join('') : '[]';
+        const colorsString = item.Colors ? item.Colors.join('') : '[]';
+        const cleanSizesString = sizesString.replace(/\\/g, '').replace(/^\[|\]$/g, '');
+        const cleanColorsString = colorsString.replace(/\\/g, '').replace(/^\[|\]$/g, '');
+        const sizes = cleanSizesString ? cleanSizesString.split(',') : [];
+        const colors = cleanColorsString ? cleanColorsString.split(',') : [];
+        return { ...item, Sizes: sizes, Colors: colors };
+      });
+      setRetrievedItems(parsedItems);
 
-    const fetchPromotions = async () => {
-      setLoading(true);
-      const searchQuery = urlParams.toString();
-      try {
-        const res = await fetch(`/api/promotions/search/get?${searchQuery}`);
-        const data = await res.json();
-        setPromotions(data);
-      } catch (error) {
-        console.error("Error fetching promotions:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "Failed to fetch promotions. Please try again later.",
-        });
-      }
+      const promotionResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/promotions`);
+      console.log('Promotions Response:', promotionResponse.data);
+      const promotionData = promotionResponse.data.data || promotionResponse.data || [];
+      setPromotions(promotionData);
+
       setLoading(false);
-    };
-
-    fetchPromotions();
-  }, [location.search]);
-
-  const handleChange = (e) => {
-    setSearchData({ ...searchData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const urlParams = new URLSearchParams(searchData);
-    navigate(`/manager/discount-management?${urlParams.toString()}`);
-  };
-
-  const handleDelete = async (promotionId) => {
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d4a373",
-      cancelButtonColor: "#a98467",
-      confirmButtonText: "Yes, delete it!",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const res = await fetch(`/api/promotions/${promotionId}`, {
-          method: "DELETE",
-        });
-
-        // Check if response is not OK
-        if (!res.ok) {
-          throw new Error(`Error: ${res.status} ${res.statusText}`);
-        }
-
-        const data = await res.json();
-
-        // Check if response contains success key
-        if (res.status === 200) {
-          Swal.fire("Deleted!", "The promotion has been deleted.", "success");
-          setPromotions((prev) =>
-            prev.filter((promotion) => promotion._id !== promotionId)
-          );
-        } else {
-          Swal.fire("Error!", data.message || "Unknown error", "error");
-        }
-      } catch (error) {
-        console.error("Error deleting promotion:", error);
-        Swal.fire(
-          "Error!",
-          "Failed to delete the promotion. Please try again.",
-          "error"
-        );
-      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to fetch data',
+        confirmButtonColor: '#89198f',
+      });
+      setLoading(false);
     }
   };
 
-  const handleInfo = (promotion) => {
-    Swal.fire({
-      title: promotion.promotionName,
-      html: `
-        <strong>Type:</strong> ${promotion.promotionType}<br/>
-        <strong>Description:</strong> ${promotion.description}<br/>
-        <strong>Applicable Products:</strong> ${promotion.applicableProducts}<br/>
-        <strong>Usage Limit:</strong> ${promotion.usageLimit}
-      `,
-      icon: "info",
-      confirmButtonText: "Close",
-      confirmButtonColor: "#d4a373",
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Get promotion details for a specific item
+  const getItemPromotion = (itemId) => {
+    const itemIdStr = itemId.toString();
+    const promo = promotions.find(promo => {
+      // Check if applicableProducts contains the itemId, handling objects or strings
+      const hasProduct = promo.applicableProducts.some(product => {
+        // If product is an object (e.g., RetrievedInventory), use _id; otherwise, use the value directly
+        const productId = typeof product === 'object' && product._id ? product._id.toString() : product.toString();
+        return productId === itemIdStr;
+      });
+      console.log(`Checking promotion for item ${itemIdStr}:`, promo, 'Applicable Products:', promo?.applicableProducts);
+      return hasProduct;
     });
+    return promo || null;
   };
+
+  // Handle adding/updating a promotion
+  const handleAddDiscount = async (item, discountData) => {
+    try {
+      const existingPromo = getItemPromotion(item._id);
+      const url = existingPromo
+        ? `${API_CONFIG.BASE_URL}/api/promotions/${existingPromo.promotionID}`
+        : `${API_CONFIG.BASE_URL}/api/promotions`;
+      const method = existingPromo ? 'put' : 'post';
+
+      const promotionData = {
+        promotionID: existingPromo ? existingPromo.promotionID : Date.now(),
+        type: discountData.type,
+        discountValue: discountData.discountType === 'flat' ? parseFloat(discountData.discountValue) : undefined,
+        discountPercentage: discountData.discountType === 'percentage' ? parseFloat(discountData.discountPercentage) : undefined,
+        discountType: discountData.discountType,
+        validUntil: discountData.validUntil,
+        promoCode: discountData.promoCode || `DISC${item.inventoryID}`,
+        applicableProducts: [item._id],
+        minimumPurchase: parseFloat(discountData.minimumPurchase) || 0,
+      };
+
+      const response = await axios({
+        method,
+        url,
+        data: promotionData,
+      });
+
+      console.log('Discount Response:', response.data);
+
+      const newPromo = response.data.data || response.data;
+      if (method === 'post') {
+        setPromotions(prev => [...prev, newPromo]);
+      } else {
+        setPromotions(prev =>
+          prev.map(p => (p.promotionID === existingPromo.promotionID ? newPromo : p))
+        );
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: `Discount ${existingPromo ? 'updated' : 'added'} successfully!`,
+        confirmButtonColor: '#89198f',
+      });
+
+      await fetchData();
+
+      setIsModalOpen(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error managing discount:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Failed to manage discount',
+        confirmButtonColor: '#89198f',
+      });
+    }
+  };
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return '/default-img.jpg';
+    const relativePath = imagePath.replace(/.*uploads[/\\]/, 'uploads/');
+    return `${API_CONFIG.BASE_URL}/${relativePath}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen bg-gradient-to-r from-[#f5ebe0] to-[#e3d5ca] text-[#775c41] p-8 rounded-lg"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6"
     >
-      <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-DarkColor mb-8">
-          Discount Management
-        </h1>
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto">
+        <h2 className="text-2xl font-bold text-purple-800 mb-6">Discount Management</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-gray-700">
+            <thead className="bg-purple-100 text-purple-800">
+              <tr>
+                <th className="p-4 font-semibold rounded-tl-lg">Image</th>
+                <th className="p-4 font-semibold">Item Name</th>
+                <th className="p-4 font-semibold">Category</th>
+                <th className="p-4 font-semibold">Quantity</th>
+                <th className="p-4 font-semibold">Unit Price</th>
+                <th className="p-4 font-semibold">Current Discount</th>
+                <th className="p-4 font-semibold rounded-tr-lg">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {retrievedItems.length > 0 ? (
+                retrievedItems.map((item) => {
+                  const promo = getItemPromotion(item._id);
+                  const discountAmount =
+                    promo?.discountType === 'flat'
+                      ? promo.discountValue || 0
+                      : promo?.discountType === 'percentage' && item.unitPrice
+                      ? (item.unitPrice * (promo.discountPercentage || 0)) / 100
+                      : 0;
 
-        <form onSubmit={handleSubmit} className="mb-8">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-grow">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="searchTerm"
-                  placeholder="Search promotions..."
-                  value={searchData.searchTerm}
-                  onChange={handleChange}
-                  className="w-full p-3 pl-10 rounded-lg border border-DarkColor focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                />
-                <MdSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-DarkColor text-xl" />
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <select
-                name="type"
-                value={searchData.type}
-                onChange={handleChange}
-                className="p-3 rounded-lg border border-DarkColor focus:outline-none focus:ring-2 focus:ring-DarkColor"
-              >
-                <option value="all">All Types</option>
-                <option value="pDiscount">Percentage Discount</option>
-                <option value="BOGO">Buy One Get One Free</option>
-                <option value="fShipping">Free Shipping</option>
-                <option value="fGift">Free Gift</option>
-              </select>
-              <button
-                type="submit"
-                className="bg-DarkColor text-white p-3 rounded-lg hover:bg-ExtraDarkColor transition duration-300 flex items-center gap-2"
-              >
-                <FaFilter /> Filter
-              </button>
-              <PromotionReport
-                promotions={promotions}
-                searchData={searchData}
-                render={({ onClick }) => (
-                  <button
-                    onClick={onClick}
-                    className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition duration-300 flex items-center gap-2"
-                  >
-                    <MdFileDownload /> Download Report
-                  </button>
-                )}
-              />
-            </div>
-          </div>
-        </form>
-
-        <AnimatePresence>
-          {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex justify-center items-center h-64"
-            >
-              <FaSpinner className="animate-spin text-DarkColor text-5xl" />
-            </motion.div>
-          ) : promotions.length > 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-            >
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-DarkColor text-white">
-                    <th className="p-3 text-left">Promotion Name</th>
-                    <th className="p-3 text-left">Code</th>
-                    <th className="p-3 text-left">Discount %</th>
-                    <th className="p-3 text-left">Price</th>
-                    <th className="p-3 text-left">Final Price</th>
-                    <th className="p-3 text-left">Start Date</th>
-                    <th className="p-3 text-left">End Date</th>
-                    <th className="p-3 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promotions.map((promotion) => (
-                    <motion.tr
-                      key={promotion._id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="border-b border-DarkColor bg-white hover:bg-SecondaryColor transition duration-300"
+                  return (
+                    <tr
+                      key={item._id}
+                      className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="p-3">{promotion.promotionName}</td>
-                      <td className="p-3">{promotion.promotionCode}</td>
-                      <td className="p-3">{promotion.discountPercentage}%</td>
-                      <td className="p-3">${promotion.price}</td>
-                      <td className="p-3">${promotion.finalPrice || "N/A"}</td>
-                      <td className="p-3">
-                        {new Date(promotion.startDate).toLocaleDateString()}
+                      <td className="p-4">
+                        <img
+                          src={getImageUrl(item.image)}
+                          alt={item.ItemName}
+                          className="w-16 h-16 object-cover rounded-lg"
+                          onError={(e) => { e.target.src = '/default-img.jpg'; }}
+                        />
                       </td>
-                      <td className="p-3">
-                        {new Date(promotion.endDate).toLocaleDateString()}
+                      <td className="p-4">{item.ItemName}</td>
+                      <td className="p-4">{item.Category}</td>
+                      <td className="p-4">{item.retrievedQuantity}</td>
+                      <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
+                      <td className="p-4">
+                        {promo ? (
+                          <div className="text-green-600">
+                            <span>
+                              {promo.discountType === 'flat'
+                                ? `$${promo.discountValue || 0} off`
+                                : `${promo.discountPercentage || 0}% off`}
+                            </span>
+                            <span className="block text-sm text-gray-600">
+                              Discount Amount: ${discountAmount.toFixed(2)}
+                            </span>
+                            {promo.validUntil && (
+                              <span className="block text-sm text-gray-500">
+                                Until: {format(new Date(promo.validUntil), 'MMM dd, yyyy')}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">No discount</span>
+                        )}
                       </td>
-                      <td className="p-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleInfo(promotion)}
-                            className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition duration-300"
-                          >
-                            <MdInfo />
-                          </button>
-                          <Link
-                            to={`/manager/update-discount/${promotion._id}`}
-                            className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition duration-300"
-                          >
-                            <FaEdit />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(promotion._id)}
-                            className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition duration-300"
-                          >
-                            <MdDeleteForever />
-                          </button>
-                        </div>
+                      <td className="p-4">
+                        <button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-2 text-purple-600 hover:text-purple-800 transition-colors"
+                          title={promo ? 'Edit Discount' : 'Add Discount'}
+                        >
+                          {promo ? <FiEdit size={20} /> : <FiPlus size={20} />}
+                        </button>
                       </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </motion.div>
-          ) : (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center text-lg text-DarkColor"
-            >
-              No promotions found.
-            </motion.p>
-          )}
-        </AnimatePresence>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center py-8 text-gray-500">
+                    No retrieved items found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <DiscountModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedItem(null);
+        }}
+        item={selectedItem}
+        onAddDiscount={handleAddDiscount}
+        existingPromo={selectedItem ? getItemPromotion(selectedItem?._id) : null}
+      />
     </motion.div>
   );
-}
+};
+
+const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) => {
+  const [discountData, setDiscountData] = useState({
+    type: existingPromo?.type || 'Discount Code',
+    discountValue: existingPromo?.discountValue || '',
+    discountPercentage: existingPromo?.discountPercentage || '',
+    discountType: existingPromo?.discountType || 'flat',
+    validUntil: existingPromo?.validUntil
+      ? format(new Date(existingPromo.validUntil), "yyyy-MM-dd'T'HH:mm")
+      : '',
+    promoCode: existingPromo?.promoCode || '',
+    minimumPurchase: existingPromo?.minimumPurchase || '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setDiscountData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (
+      (discountData.discountType === 'flat' && (!discountData.discountValue || parseFloat(discountData.discountValue) <= 0)) ||
+      (discountData.discountType === 'percentage' && (!discountData.discountPercentage || parseFloat(discountData.discountPercentage) <= 0)) ||
+      !discountData.validUntil
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Input',
+        text: 'Please fill in all required fields with valid values',
+        confirmButtonColor: '#89198f',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onAddDiscount(item, discountData);
+      setDiscountData({
+        type: 'Discount Code',
+        discountValue: '',
+        discountPercentage: '',
+        discountType: 'flat',
+        validUntil: '',
+        promoCode: '',
+        minimumPurchase: '',
+      });
+    } catch (error) {
+      console.error('Error in discount submit:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && item && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <FiX size={24} />
+            </button>
+
+            <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
+              <span className="bg-purple-600 text-white p-2 rounded-full mr-3">
+                <FiPlus size={20} />
+              </span>
+              {existingPromo ? 'Edit Discount' : 'Add Discount'}
+            </h2>
+
+            <div className="mb-6 flex items-start gap-4">
+              <img
+                src={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : '/default-img.jpg'}
+                alt={item.ItemName}
+                className="w-20 h-20 object-cover rounded-lg shadow-sm"
+                onError={(e) => { e.target.src = '/default-img.jpg'; }}
+              />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">{item.ItemName}</h3>
+                <p className="text-gray-600">Category: {item.Category}</p>
+                <p className="text-gray-600">Price: {item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Promotion Type</label>
+                <select
+                  name="type"
+                  value={discountData.type}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="Discount Code">Discount Code</option>
+                  <option value="Loyalty">Loyalty</option>
+                  <option value="Flash Sale">Flash Sale</option>
+                  <option value="Bundle">Bundle</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
+                <select
+                  name="discountType"
+                  value={discountData.discountType}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="flat">Flat Amount</option>
+                  <option value="percentage">Percentage</option>
+                </select>
+              </div>
+
+              {discountData.discountType === 'flat' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Discount Amount *</label>
+                  <input
+                    type="number"
+                    name="discountValue"
+                    value={discountData.discountValue}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter amount (e.g., 5)"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Discount Percentage *</label>
+                  <input
+                    type="number"
+                    name="discountPercentage"
+                    value={discountData.discountPercentage}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter percentage (e.g., 10)"
+                    min="0"
+                    max="100"
+                    step="1"
+                    required
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Valid Until *</label>
+                <input
+                  type="datetime-local"
+                  name="validUntil"
+                  value={discountData.validUntil}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Promo Code</label>
+                <input
+                  type="text"
+                  name="promoCode"
+                  value={discountData.promoCode}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter promo code (optional)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Purchase</label>
+                <input
+                  type="number"
+                  name="minimumPurchase"
+                  value={discountData.minimumPurchase}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter minimum purchase (optional)"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Discount'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+DiscountModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  item: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    ItemName: PropTypes.string.isRequired,
+    Category: PropTypes.string,
+    unitPrice: PropTypes.number,
+    image: PropTypes.string,
+  }),
+  onAddDiscount: PropTypes.func.isRequired,
+  existingPromo: PropTypes.object,
+};
 
 export default DiscountTable;
