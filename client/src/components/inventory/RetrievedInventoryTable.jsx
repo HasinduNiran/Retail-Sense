@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { FiX, FiPlus, FiArrowRight, FiRotateCcw } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
+import { MdSend, MdRestartAlt } from 'react-icons/md';
 import Swal from 'sweetalert2';
 import API_CONFIG from '../../config/apiConfig';
 import PropTypes from 'prop-types';
@@ -17,30 +18,52 @@ const RetrievedInventoryTable = () => {
     try {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`);
       
-      // Fetch original inventory items to get colors and sizes
-      const inventoryResponse = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`);
-      const inventoryItems = inventoryResponse.data.items || [];
+      // Process each item's colors and sizes
+      const processedItems = response.data.map(item => {
+        let colors = [];
+        let sizes = [];
 
-      const groupedItems = response.data.reduce((acc, item) => {
-        const existingItem = acc.find(i => i.ItemName === item.ItemName);
-        // Find matching inventory item to get colors and sizes
-        const inventoryItem = inventoryItems.find(i => i._id === item.inventoryID);
-        
-        if (existingItem) {
-          existingItem.retrievedQuantity += item.retrievedQuantity;
-          existingItem.retrievedDates.push(item.retrievedDate);
-        } else {
-          acc.push({
-            ...item,
-            colors: inventoryItem?.colors || [],
-            sizes: inventoryItem?.sizes || [],
-            retrievedDates: [item.retrievedDate],
-          });
+        // Process colors
+        if (item.Colors) {
+          if (Array.isArray(item.Colors)) {
+            colors = item.Colors;
+          } else {
+            try {
+              colors = JSON.parse(item.Colors);
+            } catch {
+              colors = item.Colors
+                .split(/[,[\]\\]/)
+                .map(c => c.trim().replace(/["']/g, ''))
+                .filter(c => c);
+            }
+          }
         }
-        return acc;
-      }, []);
-      
-      setRetrievedItems(groupedItems);
+
+        // Process sizes
+        if (item.Sizes) {
+          if (Array.isArray(item.Sizes)) {
+            sizes = item.Sizes;
+          } else {
+            try {
+              sizes = JSON.parse(item.Sizes);
+            } catch {
+              sizes = item.Sizes
+                .split(/[,[\]\\]/)
+                .map(s => s.trim().replace(/["']/g, ''))
+                .filter(s => s);
+            }
+          }
+        }
+
+        return {
+          ...item,
+          colors,
+          sizes,
+          retrievedDate: item.retrievedDate || item.createdAt || new Date().toISOString()
+        };
+      });
+
+      setRetrievedItems(processedItems);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching retrieved inventory:', error);
@@ -94,6 +117,62 @@ const RetrievedInventoryTable = () => {
     }
   };
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return '/default-img.jpg';
+    const relativePath = imagePath.replace(/.*uploads[/\\]/, 'uploads/');
+    return `${API_CONFIG.BASE_URL}/${relativePath}`;
+  };
+
+  // Color validation helper
+  const isValidColor = (color) => {
+    const style = new Option().style;
+    style.backgroundColor = color;
+    return style.backgroundColor !== '';
+  };
+
+  // Color rendering logic
+  const renderColors = (colors) => {
+    if (!colors || !colors.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {colors.map((color, index) => {
+          const colorValue = color.toLowerCase();
+          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
+          return (
+            <div
+              key={index}
+              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm flex items-center justify-center"
+              style={{ 
+                backgroundColor: isValidColor(colorValue) ? colorValue : '#e5e7eb',
+                border: isLight ? '1px solid #d1d5db' : 'none'
+              }}
+              title={color}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Size rendering logic
+  const renderSizes = (sizes) => {
+    if (!sizes || !sizes.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {sizes.map((size, index) => (
+          <span
+            key={index}
+            className="inline-flex items-center justify-center min-w-[2rem] h-6 px-2 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full"
+          >
+            {size}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   const handleSendToStore = async (item, unitPrice) => {
     try {
       // Update the unit price
@@ -131,55 +210,6 @@ const RetrievedInventoryTable = () => {
     }
   };
 
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return '/default-img.jpg';
-    const relativePath = imagePath.replace(/.*uploads[/\\]/, 'uploads/');
-    return `${API_CONFIG.BASE_URL}/${relativePath}`;
-  };
-
-  // Color rendering logic
-  const renderColors = (colors) => {
-    if (!colors || !colors.length) return <span className="text-gray-500">-</span>;
-
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {colors.map((color, index) => {
-          const colorValue = color.toLowerCase();
-          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
-          return (
-            <div
-              key={index}
-              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm"
-              style={{ 
-                backgroundColor: colorValue,
-                border: isLight ? '1px solid #d1d5db' : 'none'
-              }}
-              title={color}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Size rendering logic
-  const renderSizes = (sizes) => {
-    if (!sizes || !sizes.length) return <span className="text-gray-500">-</span>;
-
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {sizes.map((size, index) => (
-          <span
-            key={index}
-            className="inline-flex items-center justify-center min-w-[2rem] h-6 px-2 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full"
-          >
-            {size}
-          </span>
-        ))}
-      </div>
-    );
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -210,7 +240,7 @@ const RetrievedInventoryTable = () => {
                 <th className="p-4 font-semibold">Colors</th>
                 <th className="p-4 font-semibold">Sizes</th>
                 <th className="p-4 font-semibold">Unit Price</th>
-                <th className="p-4 font-semibold">Last Retrieved</th>
+                <th className="p-4 font-semibold">Retrieved Date</th>
                 <th className="p-4 font-semibold rounded-tr-lg">Actions</th>
               </tr>
             </thead>
@@ -238,26 +268,26 @@ const RetrievedInventoryTable = () => {
                     <td className="p-4">{renderSizes(item.sizes)}</td>
                     <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
                     <td className="p-4">
-                      {format(new Date(item.retrievedDates[item.retrievedDates.length - 1]), 'MMM d, yyyy')}
+                      {format(new Date(item.retrievedDate), 'MMM d, yyyy')}
                     </td>
                     <td className="p-4">
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <button
                           onClick={() => {
                             setSelectedItem(item);
                             setIsModalOpen(true);
                           }}
-                          className="p-2 text-purple-600 hover:text-purple-800 transition-colors"
+                          className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded-full transition-all duration-200 transform hover:scale-110"
                           title="Go to Popup"
                         >
-                          <FiArrowRight size={20} />
+                          <MdSend size={22} className="transform rotate-[-45deg]" />
                         </button>
                         <button
                           onClick={() => handleRevert(item)}
-                          className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-all duration-200 transform hover:scale-110"
                           title="Revert to Inventory"
                         >
-                          <FiRotateCcw size={20} />
+                          <MdRestartAlt size={22} />
                         </button>
                       </div>
                     </td>
@@ -340,7 +370,7 @@ const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
 
             <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
               <span className="bg-purple-600 text-white p-2 rounded-full mr-3">
-                <FiPlus size={20} />
+                <MdSend size={20} />
               </span>
               Save
             </h2>
