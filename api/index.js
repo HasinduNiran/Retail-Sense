@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import promotionRoutes from './routes/promotion.routes.js';
 import InventoryRoutes from './routes/inventory.routes.js';
+import UserRoutes from './routes/user.route.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -48,6 +49,7 @@ ensureUploadsDir();
 // Routes
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/inventory', InventoryRoutes);
+app.use('/api/users', UserRoutes);
 
 // MongoDB Connection
 const connectDB = async () => {
