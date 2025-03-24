@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEdit, FiTrash2, FiPackage } from "react-icons/fi";
-import { MdAdd, MdInventory } from "react-icons/md";
+import { MdAdd, MdInventory, MdFileDownload } from "react-icons/md";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import API_CONFIG from "../../config/apiConfig.js";
+import axios from 'axios';
 import InventoryQuantityModal from "./InventoryQuantityModal";
 
 function InventoryManagementAll() {
@@ -19,112 +22,88 @@ function InventoryManagementAll() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Color validation helper
-  const isValidColor = (color) => {
-    const style = new Option().style;
-    style.backgroundColor = color;
-    return style.backgroundColor !== '';
-  };
-
-  // Color rendering logic
-  const renderColors = (colors) => {
-    if (!colors) return <span className="text-gray-500">-</span>;
-
-    try {
-      const parsedColors = JSON.parse(colors);
-      if (Array.isArray(parsedColors)) {
-        return renderColorContent(parsedColors);
-      }
-    } catch (e) {
-      const colorArray = colors
-        .split(/[,[\]\\]/)
-        .map(c => c.trim().replace(/["']/g, ''))
-        .filter(c => c);
-      return renderColorContent([...new Set(colorArray)]);
-    }
-
-    return <span className="text-gray-500">-</span>;
-  };
-
-  const renderColorContent = (colorArray) => {
-    if (!colorArray.length) return <span className="text-gray-500">-</span>;
-
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {colorArray.map((color, index) => {
-          const colorValue = color.toLowerCase();
-          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
-          return (
-            <div
-              key={index}
-              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm hover:scale-110 transition-transform"
-              style={{ 
-                backgroundColor: isValidColor(colorValue) ? colorValue : '#cccccc',
-                border: isLight ? '1px solid #d1d5db' : 'none'
-              }}
-              title={color}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   // Size rendering logic
   const renderSizes = (sizes) => {
-    if (!sizes) return <span className="text-gray-500">-</span>;
+    if (!sizes) return "-";
+
+    const renderSizeContent = (sizeArray) => {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {sizeArray.map((size, index) => (
+            <div
+              key={index}
+              className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-medium"
+            >
+              {size}
+            </div>
+          ))}
+        </div>
+      );
+    };
 
     try {
       const parsedSizes = JSON.parse(sizes);
       if (Array.isArray(parsedSizes)) {
         return renderSizeContent(parsedSizes);
       }
-    // eslint-disable-next-line no-unused-vars
-    } catch (e) {
-      // Enhanced cleaning for special characters
+    } catch {
+      // If JSON parsing fails, try to split the string
       const sizeArray = sizes
-        .split(/[^\[\],\\"'\s]/) // Split on any non-alphanumeric characters
-        .map(s => s.replace(/[^a-zA-Z0-9]/g, '')) // Remove remaining special characters
+        .split(/[,\s]+/) // Split on commas and whitespace
+        .map(s => s.replace(/[^a-zA-Z0-9]/g, ''))
         .filter(s => s)
-        .map(s => s.toUpperCase()); // Convert to uppercase
+        .map(s => s.toUpperCase());
 
       return renderSizeContent([...new Set(sizeArray)]);
     }
-
-    return <span className="text-gray-500">-</span>;
   };
 
-  const renderSizeContent = (sizeArray) => {
-    if (!sizeArray.length) return <span className="text-gray-500">-</span>;
+  // Color rendering logic
+  const renderColors = (colors) => {
+    if (!colors) return "-";
 
-    // Size mapping for consistent display
-    const sizeMap = {
-      'XS': 'XS',
-      'YS': 'YS',
-      'W': 'W', 
-      'L': 'L',
-      'XL': 'XL',
-      'XXL': 'XXL',
-      'M': 'M',
-      'S': 'S'
+    const isValidColor = (color) => {
+      const style = new Option().style;
+      style.color = color;
+      return style.color !== '';
     };
 
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {sizeArray.map((size, index) => {
-          const cleanSize = sizeMap[size.toUpperCase()] || size;
-          return (
-            <span
-              key={index}
-              className="inline-flex items-center justify-center min-w-[2rem] h-6 px-2 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full shadow-sm hover:bg-gray-200 transition-colors"
-              title={cleanSize}
-            >
-              {cleanSize}
-            </span>
-          );
-        })}
-      </div>
-    );
+    const renderColorContent = (colorArray) => {
+      return (
+        <div className="flex gap-1">
+          {colorArray.map((color, index) => {
+            const colorValue = color.toLowerCase();
+            return (
+              <div
+                key={index}
+                className="w-6 h-6 rounded-full border border-gray-300"
+                style={{ 
+                  backgroundColor: isValidColor(colorValue) ? colorValue : '#cccccc',
+                  border: ['white', 'yellow', 'lime'].includes(colorValue) ? '1px solid #d1d5db' : 'none'
+                }}
+                title={color}
+              />
+            );
+          })}
+        </div>
+      );
+    };
+
+    try {
+      const parsedColors = JSON.parse(colors);
+      if (Array.isArray(parsedColors)) {
+        return renderColorContent(parsedColors);
+      }
+    } catch {
+      // If JSON parsing fails, try to split the string
+      const colorArray = colors
+        .split(/[,\s]+/) // Split on commas and whitespace
+        .map(c => c.replace(/[^a-zA-Z0-9]/g, ''))
+        .filter(c => c)
+        .map(c => c.toUpperCase());
+
+      return renderColorContent([...new Set(colorArray)]);
+    }
   };
 
   const getImageUrl = (imagePath) => {
@@ -154,13 +133,13 @@ function InventoryManagementAll() {
 
       setInventoryItems(result.items);
       setTotalPages(result.pages);
-    } catch (err) {
-      console.error("Fetch Error:", err.message);
-      setError(err.message);
+    } catch (error) {
+      console.error("Fetch Error:", error.message);
+      setError(error.message);
       Swal.fire({
         icon: "error",
         title: "Error!",
-        text: err.message,
+        text: error.message,
         confirmButtonColor: "#89198f",
       });
     } finally {
@@ -172,49 +151,41 @@ function InventoryManagementAll() {
     fetchInventory();
   }, [fetchInventory]);
 
-  const handleDelete = async (inventoryID) => {
+  const handleError = (error) => {
+    console.error('Error:', error);
     Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#89198f",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${inventoryID}`;
-          const response = await fetch(url, {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            throw new Error(result.message || "Failed to delete inventory item");
-          }
-
-          await fetchInventory();
-          Swal.fire({
-            icon: "success",
-            title: "Deleted!",
-            text: "Inventory item has been deleted.",
-            confirmButtonColor: "#89198f",
-          });
-        } catch (err) {
-          Swal.fire({
-            icon: "error",
-            title: "Error!",
-            text: err.message,
-            confirmButtonColor: "#89198f",
-          });
-        }
-      }
+      icon: 'error',
+      title: 'Error',
+      text: error.response?.data?.message || 'An error occurred',
+      confirmButtonColor: '#89198f',
     });
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#89198f',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (result.isConfirmed) {
+        await axios.delete(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`);
+        setInventoryItems(prev => prev.filter(item => (item.inventoryID || item._id) !== id));
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Item has been deleted.',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    } catch (error) {
+      handleError(error);
+    }
   };
 
   const handleEdit = (inventoryID) => {
@@ -288,6 +259,97 @@ function InventoryManagementAll() {
     );
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    
+    // Add title and header
+    const title = "Retail Sense - Inventory Report";
+    const date = new Date().toLocaleDateString();
+    const time = new Date().toLocaleTimeString();
+    
+    // Add logo or header image (if available)
+    // doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
+    
+    // Title styling
+    doc.setFontSize(20);
+    doc.setTextColor(89, 25, 143); // Purple color (#59198F)
+    doc.text(title, pageWidth / 2, 20, { align: 'center' });
+    
+    // Date and time
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${date} at ${time}`, pageWidth - 15, 30, { align: 'right' });
+    
+    // Summary section
+    doc.setFontSize(12);
+    doc.setTextColor(60);
+    const totalItems = inventoryItems.length;
+    const totalQuantity = inventoryItems.reduce((sum, item) => sum + (item.Quantity || 0), 0);
+    
+    doc.text('Inventory Summary:', 15, 40);
+    doc.text(`Total Items: ${totalItems}`, 15, 48);
+    doc.text(`Total Quantity: ${totalQuantity}`, 15, 56);
+    
+    // Prepare table data
+    const tableData = inventoryItems.map(item => [
+      item.ItemName || '-',
+      item.Category || '-',
+      (item.Quantity || 0).toString(),
+      item.Brand || '-',
+      item.Style || '-',
+      Array.isArray(item.Colors) ? item.Colors.join(', ') : (item.Colors || '-'),
+      Array.isArray(item.Sizes) ? item.Sizes.join(', ') : (item.Sizes || '-')
+    ]);
+    
+    // Table styling
+    doc.autoTable({
+      startY: 70,
+      head: [['Name', 'Category', 'Quantity', 'Brand', 'Style', 'Colors', 'Sizes']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [89, 25, 143], // Purple color
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      bodyStyles: {
+        fontSize: 9,
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      margin: { top: 70 },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 25 }
+      }
+    });
+    
+    // Add footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' }
+      );
+    }
+    
+    // Save the PDF
+    doc.save('RetailSense-Inventory-Report.pdf');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -311,13 +373,22 @@ function InventoryManagementAll() {
               Inventory Management
             </h1>
           </div>
-          <button
-            onClick={handleAdd}
-            className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
-          >
-            <MdAdd size={20} className="mr-1" />
-            Add New
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={generatePDF}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <MdFileDownload className="w-5 h-5" />
+              Generate Report
+            </button>
+            <button
+              onClick={handleAdd}
+              className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
+            >
+              <MdAdd size={20} className="mr-1" />
+              Add New
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -363,25 +434,25 @@ function InventoryManagementAll() {
                       >
                         <td className="p-4">{item.inventoryID || item._id}</td>
                         <td className="p-4">{renderItemImage(item)}</td>
-                        <td className="p-4">{item.ItemName}</td>
-                        <td className="p-4">{item.Category}</td>
-                        <td className="p-4">{item.Quantity}</td>
+                        <td className="p-4">{item.ItemName || '-'}</td>
+                        <td className="p-4">{item.Category || '-'}</td>
+                        <td className="p-4">{(item.Quantity || 0).toString()}</td>
                         <td className="p-4">
                           {renderColors(item.Colors || item.colors)}
                         </td>
                         <td className="p-4">
                           {renderSizes(item.Sizes || item.sizes)}
                         </td>
-                        <td className="p-4">{item.reorderThreshold}</td>
-                        <td className={`p-4 ${getStockStatusClass(item.StockStatus)}`}>
-                          {item.StockStatus}
+                        <td className="p-4">{item.reorderThreshold || '-'}</td>
+                        <td className={`p-4 ${getStockStatusClass(item.StockStatus || '-')}`}>
+                          {item.StockStatus || '-'}
                         </td>
-                        <td className="p-4">{item.Location}</td>
-                        <td className="p-4">{item.Brand}</td>
-                        <td className="p-4">{item.Gender}</td>
-                        <td className="p-4">{item.Style}</td>
-                        <td className="p-4">{item.SupplierName}</td>
-                        <td className="p-4">{item.SupplierContact}</td>
+                        <td className="p-4">{item.Location || '-'}</td>
+                        <td className="p-4">{item.Brand || '-'}</td>
+                        <td className="p-4">{item.Gender || '-'}</td>
+                        <td className="p-4">{item.Style || '-'}</td>
+                        <td className="p-4">{item.SupplierName || '-'}</td>
+                        <td className="p-4">{item.SupplierContact || '-'}</td>
                         <td className="p-4 flex space-x-2">
                           <button
                             onClick={() => handleEdit(item.inventoryID || item._id)}
