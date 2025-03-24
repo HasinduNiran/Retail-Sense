@@ -14,6 +14,57 @@ const RetrievedInventoryTable = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Color validation helper
+  const isValidColor = (color) => {
+    const style = new Option().style;
+    style.backgroundColor = color;
+    return style.backgroundColor !== '';
+  };
+
+  // Color rendering logic
+  const renderColors = (colors) => {
+    if (!colors || !colors.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {colors.map((color, index) => {
+          const colorValue = color.toLowerCase();
+          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
+          return (
+            <div
+              key={index}
+              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm hover:scale-110 transition-transform"
+              style={{ 
+                backgroundColor: isValidColor(colorValue) ? colorValue : '#cccccc',
+                border: isLight ? '1px solid #d1d5db' : 'none'
+              }}
+              title={color}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Size rendering logic
+  const renderSizes = (sizes) => {
+    if (!sizes || !sizes.length) return <span className="text-gray-500">-</span>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {sizes.map((size, index) => (
+          <div
+            key={index}
+            className="w-6 h-6 rounded-full bg-purple-100 border border-purple-300 flex items-center justify-center text-xs font-medium text-purple-800 hover:scale-110 transition-transform"
+            title={size}
+          >
+            {size}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const fetchRetrievedInventory = async () => {
     try {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`);
@@ -25,35 +76,53 @@ const RetrievedInventoryTable = () => {
 
         // Process colors
         if (item.Colors) {
-          if (Array.isArray(item.Colors)) {
-            colors = item.Colors;
-          } else {
+          if (typeof item.Colors === 'string') {
             try {
-              colors = JSON.parse(item.Colors);
+              // Try to parse if it's a JSON string
+              const parsedColors = JSON.parse(item.Colors);
+              colors = Array.isArray(parsedColors) ? parsedColors : [parsedColors];
             } catch {
+              // If not JSON, split by comma and clean up
               colors = item.Colors
-                .split(/[,[\]\\]/)
-                .map(c => c.trim().replace(/["']/g, ''))
+                .replace(/[[\]"']/g, '') // Remove brackets and quotes
+                .split(',')
+                .map(c => c.trim())
                 .filter(c => c);
             }
+          } else if (Array.isArray(item.Colors)) {
+            colors = item.Colors;
           }
         }
 
         // Process sizes
         if (item.Sizes) {
-          if (Array.isArray(item.Sizes)) {
-            sizes = item.Sizes;
-          } else {
+          if (typeof item.Sizes === 'string') {
             try {
-              sizes = JSON.parse(item.Sizes);
+              // Try to parse if it's a JSON string
+              const parsedSizes = JSON.parse(item.Sizes);
+              sizes = Array.isArray(parsedSizes) ? parsedSizes : [parsedSizes];
             } catch {
+              // If not JSON, split by comma and clean up
               sizes = item.Sizes
-                .split(/[,[\]\\]/)
-                .map(s => s.trim().replace(/["']/g, ''))
+                .replace(/[[\]"']/g, '') // Remove brackets and quotes
+                .split(',')
+                .map(s => s.trim())
                 .filter(s => s);
             }
+          } else if (Array.isArray(item.Sizes)) {
+            sizes = item.Sizes;
           }
         }
+
+        // Clean up any remaining brackets or quotes
+        colors = colors.map(c => c.replace(/[[\]"']/g, '').trim());
+        sizes = sizes.map(s => s.replace(/[[\]"']/g, '').trim());
+
+        // Log the processed data for debugging
+        console.log('Original Colors:', item.Colors);
+        console.log('Processed Colors:', colors);
+        console.log('Original Sizes:', item.Sizes);
+        console.log('Processed Sizes:', sizes);
 
         return {
           ...item,
@@ -83,12 +152,20 @@ const RetrievedInventoryTable = () => {
 
   const handleRevert = async (item) => {
     try {
-      // First, update the inventory quantity
+      // First, get the current inventory quantity
+      const inventoryResponse = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}`
+      );
+
+      const currentInventory = inventoryResponse.data;
+      const newQuantity = currentInventory.Quantity + item.retrievedQuantity;
+
+      // Update the inventory with combined quantity
       await axios.put(
         `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}/stock-status`,
         {
-          action: 'add',
-          Quantity: item.retrievedQuantity
+          action: 'update',
+          Quantity: newQuantity
         }
       );
 
@@ -103,7 +180,7 @@ const RetrievedInventoryTable = () => {
       Swal.fire({
         icon: 'success',
         title: 'Success',
-        text: 'Item reverted to inventory successfully!',
+        text: `Successfully reverted ${item.retrievedQuantity} items back to inventory`,
         confirmButtonColor: '#89198f',
       });
     } catch (error) {
@@ -111,7 +188,7 @@ const RetrievedInventoryTable = () => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error.response?.data?.message || 'Failed to revert item',
+        text: 'Failed to revert item',
         confirmButtonColor: '#89198f',
       });
     }
@@ -121,93 +198,6 @@ const RetrievedInventoryTable = () => {
     if (!imagePath) return '/default-img.jpg';
     const relativePath = imagePath.replace(/.*uploads[/\\]/, 'uploads/');
     return `${API_CONFIG.BASE_URL}/${relativePath}`;
-  };
-
-  // Color validation helper
-  const isValidColor = (color) => {
-    const style = new Option().style;
-    style.backgroundColor = color;
-    return style.backgroundColor !== '';
-  };
-
-  // Color rendering logic
-  const renderColors = (colors) => {
-    if (!colors || !colors.length) return <span className="text-gray-500">-</span>;
-
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {colors.map((color, index) => {
-          const colorValue = color.toLowerCase();
-          const isLight = ['white', 'yellow', 'lime'].includes(colorValue);
-          return (
-            <div
-              key={index}
-              className="w-6 h-6 rounded-full border border-gray-300 shadow-sm flex items-center justify-center"
-              style={{ 
-                backgroundColor: isValidColor(colorValue) ? colorValue : '#e5e7eb',
-                border: isLight ? '1px solid #d1d5db' : 'none'
-              }}
-              title={color}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Size rendering logic
-  const renderSizes = (sizes) => {
-    if (!sizes || !sizes.length) return <span className="text-gray-500">-</span>;
-
-    return (
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {sizes.map((size, index) => (
-          <span
-            key={index}
-            className="inline-flex items-center justify-center min-w-[2rem] h-6 px-2 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full"
-          >
-            {size}
-          </span>
-        ))}
-      </div>
-    );
-  };
-
-  const handleSendToStore = async (item, unitPrice) => {
-    try {
-      // Update the unit price
-      const response = await axios.post(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/send-to-store/${item._id}`,
-        { unitPrice: parseFloat(unitPrice) }
-      );
-
-      if (response.status === 200) {
-        // Update the item in the table with the new unit price
-        setRetrievedItems(prev => 
-          prev.map(i => i._id === item._id ? { ...i, unitPrice: parseFloat(unitPrice) } : i)
-        );
-      
-        Swal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'Unit price updated successfully!',
-          confirmButtonColor: '#89198f',
-        });
-
-        // Close the modal
-        setIsModalOpen(false);
-        // Clear selected item
-        setSelectedItem(null);
-      }
-    } catch (error) {
-      console.error('Error updating unit price:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Failed to update unit price',
-        confirmButtonColor: '#89198f',
-      });
-    }
   };
 
   if (loading) {
@@ -266,7 +256,7 @@ const RetrievedInventoryTable = () => {
                     <td className="p-4">{item.Style || '-'}</td>
                     <td className="p-4">{renderColors(item.colors)}</td>
                     <td className="p-4">{renderSizes(item.sizes)}</td>
-                    <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
+                    <td className="p-4">{item.unitPrice ? `Rs. ${item.unitPrice.toFixed(2)}` : '-'}</td>
                     <td className="p-4">
                       {format(new Date(item.retrievedDate), 'MMM d, yyyy')}
                     </td>
@@ -312,111 +302,129 @@ const RetrievedInventoryTable = () => {
           setSelectedItem(null);
         }}
         item={selectedItem}
-        onSendToStore={handleSendToStore}
+        onSendToStore={async (item, unitPrice) => {
+          try {
+            await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/send-to-store/${item._id}`, {
+              unitPrice: parseFloat(unitPrice)
+            });
+            
+            // Update the unit price in the local state
+            setRetrievedItems(prev =>
+              prev.map(i =>
+                i._id === item._id
+                  ? { ...i, unitPrice: parseFloat(unitPrice) }
+                  : i
+              )
+            );
+
+            setIsModalOpen(false);
+            setSelectedItem(null);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Success',
+              text: 'Unit price updated successfully',
+              confirmButtonColor: '#89198f',
+            });
+          } catch (error) {
+            console.error('Error updating unit price:', error);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Failed to update unit price',
+              confirmButtonColor: '#89198f',
+            });
+          }
+        }}
       />
     </motion.div>
   );
 };
 
+// SendToStoreModal component
 const SendToStoreModal = ({ isOpen, onClose, item, onSendToStore }) => {
   const [unitPrice, setUnitPrice] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!unitPrice || isNaN(unitPrice) || parseFloat(unitPrice) <= 0) {
+  if (!isOpen || !item) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const price = parseFloat(unitPrice);
+    if (isNaN(price) || price <= 0) {
       Swal.fire({
         icon: 'error',
-        title: 'Invalid Unit Price',
-        text: 'Please enter a valid positive number for unit price',
+        title: 'Invalid Price',
+        text: 'Please enter a valid positive number for the unit price',
         confirmButtonColor: '#89198f',
       });
       return;
     }
-
-    setIsSubmitting(true);
-    try {
-      await onSendToStore(item, unitPrice);
-      setUnitPrice('');
-    } catch (error) {
-      console.error('Error in modal submit:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSendToStore(item, price);
   };
 
   return (
     <AnimatePresence>
-      {isOpen && item && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={onClose}
+          initial={{ scale: 0.95 }}
+          animate={{ scale: 1 }}
+          exit={{ scale: 0.95 }}
+          className="bg-white rounded-lg p-6 w-full max-w-md"
+          onClick={(e) => e.stopPropagation()}
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Save Unit Price</h2>
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-500 hover:text-gray-700"
             >
-              <FiX size={24} />
+              <FiX className="w-5 h-5" />
             </button>
+          </div>
 
-            <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
-              <span className="bg-purple-600 text-white p-2 rounded-full mr-3">
-                <MdSend size={20} />
-              </span>
-              Save
-            </h2>
-
-            <div className="mb-6 flex items-start gap-4">
-              <img
-                src={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : '/default-img.jpg'}
-                alt={item.ItemName}
-                className="w-20 h-20 object-cover rounded-lg shadow-sm"
-                onError={(e) => { e.target.src = '/default-img.jpg' }}
-              />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">{item.ItemName}</h3>
-                <p className="text-gray-600">Category: {item.Category}</p>
-                <p className="text-gray-600">Retrieved Quantity: {item.retrievedQuantity}</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Unit Price *
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Unit Price ($)
               </label>
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Enter unit price"
-                min="0"
-                step="0.01"
                 required
               />
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
-                {isSubmitting ? 'Saving...' : 'Save'}
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                Save
               </button>
             </div>
-          </motion.div>
+          </form>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 };
@@ -425,11 +433,8 @@ SendToStoreModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   item: PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    ItemName: PropTypes.string.isRequired,
-    Category: PropTypes.string,
-    retrievedQuantity: PropTypes.number,
-    image: PropTypes.string,
+    _id: PropTypes.string,
+    Name: PropTypes.string,
   }),
   onSendToStore: PropTypes.func.isRequired,
 };
