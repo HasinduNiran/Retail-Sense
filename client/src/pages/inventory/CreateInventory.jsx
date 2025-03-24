@@ -38,7 +38,67 @@ const CreateInventory = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Only restrict non-numeric input for these fields
+    if ((name === 'reorderThreshold' || name === 'Quantity') && !/^\d*$/.test(value)) {
+      return; // Only block non-numeric input
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleInputBlur = (e) => {
+    const { name, value } = e.target;
+    if (!value) return; // Don't validate empty fields on blur
+    
+    // Validation for reorderThreshold
+    if (name === 'reorderThreshold') {
+      if (parseInt(value) < 100) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Input',
+          text: 'Re-order threshold must be at least 100',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for Quantity
+    if (name === 'Quantity') {
+      if (parseInt(value) < 110) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Input',
+          text: 'Quantity must be greater than 110',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for SupplierContact (email)
+    if (name === 'SupplierContact') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Email',
+          text: 'Please enter a valid email address',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for SupplierName
+    if (name === 'SupplierName') {
+      if (/^\d+$/.test(value) || /^[^a-zA-Z0-9]+$/.test(value)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Supplier Name',
+          text: 'Supplier name cannot contain only numbers or special characters',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
   };
 
   const handleSizeToggle = (size) => {
@@ -102,16 +162,55 @@ const CreateInventory = () => {
     e.preventDefault();
 
     const requiredFields = [
-      'ItemName', 'Category', 'Location', 'Quantity', 'Brand',
-      'Gender', 'Style', 'reorderThreshold', 'SupplierName', 'SupplierContact',
+      { field: 'ItemName', label: 'Item Name' },
+      { field: 'Category', label: 'Category' },
+      { field: 'Location', label: 'Location' },
+      { field: 'Quantity', label: 'Quantity' },
+      { field: 'Brand', label: 'Brand' },
+      { field: 'Gender', label: 'Gender' },
+      { field: 'Style', label: 'Style' },
+      { field: 'reorderThreshold', label: 'Re-order Threshold' },
+      { field: 'SupplierName', label: 'Supplier Name' },
+      { field: 'SupplierContact', label: 'Supplier Contact' },
     ];
 
-    const missingFields = requiredFields.filter((field) => !formData[field]);
+    const missingFields = requiredFields.filter((field) => !formData[field.field]);
     if (missingFields.length > 0) {
       Swal.fire({
         icon: 'error',
         title: 'Required Fields Missing',
-        text: `Please fill in: ${missingFields.join(', ')}`,
+        text: `Please fill in: ${missingFields.map(f => f.label).join(', ')}`,
+        confirmButtonColor: '#89198f',
+      });
+      return;
+    }
+
+    // Additional validations
+    const validations = [
+      {
+        condition: parseInt(formData.reorderThreshold) < 100,
+        message: 'Re-order threshold must be at least 100'
+      },
+      {
+        condition: parseInt(formData.Quantity) < 110,
+        message: 'Quantity must be greater than 110'
+      },
+      {
+        condition: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.SupplierContact),
+        message: 'Please enter a valid email address for Supplier Contact'
+      },
+      {
+        condition: /^\d+$/.test(formData.SupplierName) || /^[^a-zA-Z0-9]+$/.test(formData.SupplierName),
+        message: 'Supplier name cannot contain only numbers or special characters'
+      }
+    ];
+
+    const failedValidation = validations.find(v => v.condition);
+    if (failedValidation) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: failedValidation.message,
         confirmButtonColor: '#89198f',
       });
       return;
@@ -241,7 +340,8 @@ const CreateInventory = () => {
                   name="ItemName"
                   value={formData.ItemName}
                   onChange={handleInputChange}
-                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor transition-all"
+                  onBlur={handleInputBlur}
+                  className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                   placeholder="e.g., Classic T-Shirt"
                   required
                 />
@@ -253,6 +353,7 @@ const CreateInventory = () => {
                   name="Category"
                   value={formData.Category}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                   required
                 >
@@ -269,6 +370,7 @@ const CreateInventory = () => {
                   name="Location"
                   value={formData.Location}
                   onChange={handleInputChange}
+                  onBlur={handleInputBlur}
                   className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                   required
                 >
@@ -383,6 +485,7 @@ const CreateInventory = () => {
                 name="Brand"
                 value={formData.Brand}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., Nike"
                 required
@@ -395,6 +498,7 @@ const CreateInventory = () => {
                 name="Gender"
                 value={formData.Gender}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                 required
               >
@@ -411,6 +515,7 @@ const CreateInventory = () => {
                 name="Style"
                 value={formData.Style}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor bg-white"
                 required
               >
@@ -428,6 +533,7 @@ const CreateInventory = () => {
                 name="Quantity"
                 value={formData.Quantity}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 min="0"
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., 50"
@@ -442,6 +548,7 @@ const CreateInventory = () => {
                 name="reorderThreshold"
                 value={formData.reorderThreshold}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 min="0"
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., 10"
@@ -456,6 +563,7 @@ const CreateInventory = () => {
                 name="SupplierName"
                 value={formData.SupplierName}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., Fashion Co."
                 required
@@ -469,6 +577,7 @@ const CreateInventory = () => {
                 name="SupplierContact"
                 value={formData.SupplierContact}
                 onChange={handleInputChange}
+                onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
                 placeholder="e.g., +1 123-456-7890"
                 required
