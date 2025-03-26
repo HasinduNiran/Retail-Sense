@@ -1,14 +1,13 @@
 // Home.js
-import React from "react";
 import { motion } from "framer-motion"; // Import Framer Motion
 import Navbar from "../components/Navbar";
 import HomeCon from "../components/HomeCon";
 import Collection from "../components/Collection";
-import Features from "../components/Features";
 import Products from "../components/Products";
 import Review from "../components/Review";
 import Footer from "../components/Footer";
 import Shop from "../components/Shop";
+import CustomizeDress from "../components/CustomizeDress";
 
 // Animation Variants for Framer Motion
 const containerVariants = {
@@ -44,6 +43,18 @@ export default function Home() {
       >
         <motion.div variants={componentVariants}>
           <HomeCon />
+        </motion.div>
+      </motion.div>
+
+      {/* Customize Dress Section */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        <motion.div variants={componentVariants}>
+          <CustomizeDress />
         </motion.div>
       </motion.div>
 

@@ -1,6 +1,7 @@
 import React from "react";
 import img from "../assets/img/hero.png";
 
+
 export default function HomeCon() {
   return (
     <div className=" min-h-screen flex flex-col justify-center lg:flex-row items-center lg:justify-between lg:px-32 px-5 pt-24 lg:pt-10 bg-PrimaryColor">
