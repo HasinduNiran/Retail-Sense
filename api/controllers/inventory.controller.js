@@ -337,3 +337,40 @@ export const deleteRetrievedInventory = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Update retrieved inventory item's final price
+export const updateRetrievedInventoryFinalPrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { finalPrice } = req.body;
+    
+    console.log('Updating final price:', { id, finalPrice, body: req.body });
+
+    if (finalPrice === undefined) {
+      return res.status(400).json({ message: 'Final price is required' });
+    }
+
+    const parsedFinalPrice = parseFloat(finalPrice);
+    if (isNaN(parsedFinalPrice)) {
+      return res.status(400).json({ message: 'Final price must be a valid number' });
+    }
+    
+    // Ensure finalPrice is not negative
+    const validFinalPrice = Math.max(0, parsedFinalPrice);
+    
+    const updatedItem = await RetrievedInventory.findByIdAndUpdate(
+      id,
+      { $set: { finalPrice: validFinalPrice } },
+      { new: true }
+    );
+
+    if (!updatedItem) {
+      return res.status(404).json({ message: 'Retrieved inventory item not found' });
+    }
+
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('Error updating final price:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
