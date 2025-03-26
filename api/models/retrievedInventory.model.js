@@ -49,6 +49,12 @@ const retrievedInventorySchema = new mongoose.Schema({
         min: 0,
         default: null
     },
+    finalPrice: {
+        type: Number,
+        required: false,
+        min: 0,
+        default: null
+    },
     retrievedDate: {
         type: Date,
         default: Date.now

@@ -19,13 +19,13 @@ const Products = () => {
       const inventoryData = await inventoryRes.json();
       const retrievedData = await retrievedRes.json();
 
-      // Combine and filter items that have unit prices
+      // Combine and filter items that have unit prices or final prices
       const allItems = [
         ...inventoryData.items || [],
         ...retrievedData || []
       ].filter(item => 
-        item.unitPrice && 
-        item.unitPrice > 0
+        (item.finalPrice && item.finalPrice > 0) || 
+        (item.unitPrice && item.unitPrice > 0)
       );
 
       setInventories(allItems);
@@ -58,7 +58,7 @@ const Products = () => {
                 id={inventory._id}
                 img={inventory.image ? `${API_CONFIG.BASE_URL}/${inventory.image}` : "/default-img.jpg"}
                 name={inventory.ItemName}
-                price={inventory.unitPrice}
+                price={inventory.finalPrice || inventory.unitPrice}
                 category={inventory.Category}
                 brand={inventory.Brand}
                 quantity={inventory.Quantity || inventory.retrievedQuantity}
