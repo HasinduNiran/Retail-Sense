@@ -14,7 +14,8 @@ import {
     getLowStockItems,
     updateStockStatus,
     getRetrievedInventory,
-    deleteRetrievedInventory
+    deleteRetrievedInventory,
+    updateRetrievedInventoryFinalPrice
 } from '../controllers/inventory.controller.js';
 
 const router = express.Router();
@@ -83,5 +84,6 @@ router.put('/:inventoryID/stock-status', updateStockStatus);
 // Retrieved inventory routes
 router.get('/retrieved/all', getRetrievedInventory);
 router.delete('/retrieved/:id', deleteRetrievedInventory);
+router.put('/retrieved/:id', updateRetrievedInventoryFinalPrice);
 
 export default router;

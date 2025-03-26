@@ -78,6 +78,20 @@ const DiscountTable = () => {
         : `${API_CONFIG.BASE_URL}/api/promotions`;
       const method = existingPromo ? 'put' : 'post';
 
+      // Calculate finalPrice based on discount type and amount
+      let finalPrice = item.unitPrice || 0;
+      if (discountData.discountType === 'flat' && discountData.discountValue) {
+        finalPrice = Math.max(0, finalPrice - parseFloat(discountData.discountValue));
+      } else if (discountData.discountType === 'percentage' && discountData.discountPercentage) {
+        const discountAmount = (finalPrice * parseFloat(discountData.discountPercentage)) / 100;
+        finalPrice = Math.max(0, finalPrice - discountAmount);
+      }
+
+      // Ensure finalPrice is a valid number
+      finalPrice = isNaN(finalPrice) ? 0 : finalPrice;
+      
+      console.log('Calculated finalPrice:', finalPrice);
+
       const promotionData = {
         promotionID: existingPromo ? existingPromo.promotionID : Date.now(),
         type: discountData.type,
@@ -97,6 +111,18 @@ const DiscountTable = () => {
       });
 
       console.log('Discount Response:', response.data);
+
+      // Update the finalPrice in RetrievedInventory - ensure we're sending valid JSON
+      try {
+        const finalPriceResponse = await axios.put(
+          `${API_CONFIG.BASE_URL}/api/inventory/retrieved/${item._id}`, 
+          { finalPrice: finalPrice }
+        );
+        console.log('Final price update response:', finalPriceResponse.data);
+      } catch (finalPriceError) {
+        console.error('Error updating final price:', finalPriceError);
+        console.log('Error details:', finalPriceError.response?.data);
+      }
 
       const newPromo = response.data.data || response.data;
       if (method === 'post') {
@@ -120,6 +146,7 @@ const DiscountTable = () => {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error managing discount:', error);
+      console.log('Error details:', error.response?.data);
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -203,6 +230,9 @@ const DiscountTable = () => {
                             </span>
                             <span className="block text-sm text-gray-600">
                               Discount Amount: ${discountAmount.toFixed(2)}
+                            </span>
+                            <span className="block text-sm text-purple-600 font-semibold">
+                              Final Price: ${item.finalPrice ? item.finalPrice.toFixed(2) : (item.unitPrice - discountAmount).toFixed(2)}
                             </span>
                             {promo.validUntil && (
                               <span className="block text-sm text-gray-500">

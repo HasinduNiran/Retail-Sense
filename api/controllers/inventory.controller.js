@@ -70,12 +70,17 @@ export const sendToStore = async (req, res) => {
       if (!unitPrice || isNaN(unitPrice)) {
         return res.status(400).json({ message: 'Valid unit price required' });
       }
+
+      const parsedUnitPrice = parseFloat(unitPrice);
+      // Calculate final price (you can adjust this calculation as needed)
+      const finalPrice = parsedUnitPrice;
   
       const updatedItem = await RetrievedInventory.findByIdAndUpdate(
         id,
         { 
           $set: { 
-            unitPrice: parseFloat(unitPrice)
+            unitPrice: parsedUnitPrice,
+            finalPrice: finalPrice
           } 
         },
         { new: true }
@@ -244,6 +249,10 @@ export const updateStockStatus = async (req, res) => {
         // If this is a retrieve action, save to RetrievedInventory
         if (action === 'retrieve') {
             const retrievedQuantity = inventoryItem.Quantity - newQuantity;
+            const parsedUnitPrice = inventoryItem.unitPrice || null;
+            // Calculate final price when unit price exists
+            const finalPrice = parsedUnitPrice ? parsedUnitPrice : null;
+            
             const retrievedItem = new RetrievedInventory({
                 inventoryID: inventoryItem.inventoryID,
                 ItemName: inventoryItem.ItemName,
@@ -255,7 +264,8 @@ export const updateStockStatus = async (req, res) => {
                 Gender: inventoryItem.Gender || 'Unisex',
                 Style: inventoryItem.Style,
                 image: inventoryItem.image,
-                unitPrice: inventoryItem.unitPrice || null
+                unitPrice: parsedUnitPrice,
+                finalPrice: finalPrice
             });
 
             await retrievedItem.save();
@@ -270,15 +280,21 @@ export const updateStockStatus = async (req, res) => {
         }
 
         // Update the inventory item
+        let updateFields = { 
+            Quantity: newQuantity, 
+            StockStatus: stockStatus 
+        };
+        
+        if (action === 'add' && unitPrice) {
+            const parsedUnitPrice = parseFloat(unitPrice);
+            updateFields.unitPrice = parsedUnitPrice;
+            // Also set the finalPrice (same as unitPrice in this case)
+            updateFields.finalPrice = parsedUnitPrice;
+        }
+        
         const updatedInventory = await Inventory.findOneAndUpdate(
             { inventoryID: parseInt(inventoryID) },
-            { 
-                $set: { 
-                    Quantity: newQuantity, 
-                    StockStatus: stockStatus,
-                    ...(action === 'add' && unitPrice && { unitPrice: parseFloat(unitPrice) })
-                } 
-            },
+            { $set: updateFields },
             { new: true }
         );
 
@@ -320,4 +336,41 @@ export const deleteRetrievedInventory = async (req, res) => {
         console.error('Error deleting retrieved inventory item:', error);
         res.status(500).json({ message: error.message });
     }
+};
+
+// Update retrieved inventory item's final price
+export const updateRetrievedInventoryFinalPrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { finalPrice } = req.body;
+    
+    console.log('Updating final price:', { id, finalPrice, body: req.body });
+
+    if (finalPrice === undefined) {
+      return res.status(400).json({ message: 'Final price is required' });
+    }
+
+    const parsedFinalPrice = parseFloat(finalPrice);
+    if (isNaN(parsedFinalPrice)) {
+      return res.status(400).json({ message: 'Final price must be a valid number' });
+    }
+    
+    // Ensure finalPrice is not negative
+    const validFinalPrice = Math.max(0, parsedFinalPrice);
+    
+    const updatedItem = await RetrievedInventory.findByIdAndUpdate(
+      id,
+      { $set: { finalPrice: validFinalPrice } },
+      { new: true }
+    );
+
+    if (!updatedItem) {
+      return res.status(404).json({ message: 'Retrieved inventory item not found' });
+    }
+
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('Error updating final price:', error);
+    res.status(500).json({ message: error.message });
+  }
 };
