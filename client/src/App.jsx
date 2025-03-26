@@ -9,6 +9,7 @@ import Checkout from "./pages/order/Checkout";
 import MyOrders from "./pages/order/Myorders";
 import Profile from "./pages/Profile";
 import PrivateCus from "./components/private/PrivateCus";
+import CustomizePage from "./pages/customize/CustomizePage";
 
 // Promotion Route
 
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/item/:id" element={<FashionItem />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />{" "}
+          <Route path="/customize" element={<CustomizePage />} />
         </Route>
         {/* Promotion Route */}
         <Route path="/add-offer" element={<AddOffer />}></Route>
