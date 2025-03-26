@@ -63,7 +63,8 @@ export default function Home() {
         id="shop"
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
       >
         <motion.div variants={componentVariants}>
           <Shop />
@@ -74,31 +75,21 @@ export default function Home() {
       <motion.div
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
       >
         <motion.div variants={componentVariants}>
           <Collection />
         </motion.div>
       </motion.div>
 
-      {/* Features Section */}
-      {/* <motion.div
-        id="features"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={componentVariants}>
-          <Features />
-        </motion.div>
-      </motion.div> */}
-
       {/* Products Section */}
       <motion.div
         id="products"
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
       >
         <motion.div variants={componentVariants}>
           <Products />
@@ -110,7 +101,8 @@ export default function Home() {
         id="review"
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
       >
         <motion.div variants={componentVariants}>
           <Review />
@@ -121,7 +113,8 @@ export default function Home() {
       <motion.div
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
+        whileInView="visible"
+        viewport={{ once: true }}
       >
         <motion.div variants={componentVariants}>
           <Footer />
