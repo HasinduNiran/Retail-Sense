@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { FiX, FiPlus, FiEdit } from 'react-icons/fi';
+import { MdLocalOffer } from "react-icons/md";
 import Swal from 'sweetalert2';
 import API_CONFIG from '../../config/apiConfig'; // Adjust path as needed
 import PropTypes from 'prop-types';
@@ -175,13 +176,18 @@ const DiscountTable = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6"
+      className="min-h-screen bg-PrimaryColor p-6"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold text-purple-800 mb-6">Discount Management</h2>
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto border-2 border-SecondaryColor">
+        <h2 className="text-2xl font-bold text-DarkColor mb-6 flex items-center">
+          <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+            <MdLocalOffer className="text-DarkColor" size={24} />
+          </div>
+          Discount Management
+        </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-700">
-            <thead className="bg-purple-100 text-purple-800">
+            <thead className="bg-PrimaryColor text-DarkColor">
               <tr>
                 <th className="p-4 font-semibold rounded-tl-lg">Image</th>
                 <th className="p-4 font-semibold">Item Name</th>
@@ -250,7 +256,7 @@ const DiscountTable = () => {
                             setSelectedItem(item);
                             setIsModalOpen(true);
                           }}
-                          className="p-2 text-purple-600 hover:text-purple-800 transition-colors"
+                          className="p-2 text-DarkColor hover:text-SecondaryColor transition-colors"
                           title={promo ? 'Edit Discount' : 'Add Discount'}
                         >
                           {promo ? <FiEdit size={20} /> : <FiPlus size={20} />}
@@ -298,22 +304,84 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
     minimumPurchase: existingPromo?.minimumPurchase || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({
+    discountValue: '',
+    discountPercentage: '',
+    validUntil: '',
+    promoCode: '',
+    minimumPurchase: ''
+  });
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'discountValue':
+        if (value === '' || value === null) return 'Discount amount is required';
+        if (parseFloat(value) < 0) return 'Discount amount cannot be negative';
+        if (item && item.unitPrice && parseFloat(value) > item.unitPrice) 
+          return `Discount cannot exceed unit price ($${item.unitPrice.toFixed(2)})`;
+        return '';
+        
+      case 'discountPercentage':
+        if (value === '' || value === null) return 'Discount percentage is required';
+        if (parseFloat(value) < 1) return 'Discount percentage must be at least 1%';
+        if (parseFloat(value) > 100) return 'Discount percentage cannot exceed 100%';
+        return '';
+        
+      case 'validUntil':
+        if (!value) return 'Valid until date is required';
+        if (new Date(value) < new Date()) return 'Date cannot be in the past';
+        return '';
+        
+      case 'promoCode':
+        if (value && !/^[A-Za-z]{2,}.*\d+.*$/.test(value)) 
+          return 'Promo code must have at least 2 letters and contain numbers';
+        return '';
+        
+      case 'minimumPurchase':
+        if (value && (isNaN(parseFloat(value)) || parseFloat(value) < 0)) 
+          return 'Minimum purchase must be a positive number';
+        return '';
+        
+      default:
+        return '';
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setDiscountData(prev => ({ ...prev, [name]: value }));
+    
+    // Validate the field
+    const errorMessage = validateField(name, value);
+    setErrors(prev => ({ ...prev, [name]: errorMessage }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      discountValue: discountData.discountType === 'flat' 
+        ? validateField('discountValue', discountData.discountValue)
+        : '',
+      discountPercentage: discountData.discountType === 'percentage'
+        ? validateField('discountPercentage', discountData.discountPercentage)
+        : '',
+      validUntil: validateField('validUntil', discountData.validUntil),
+      promoCode: validateField('promoCode', discountData.promoCode),
+      minimumPurchase: validateField('minimumPurchase', discountData.minimumPurchase),
+    };
+    
+    setErrors(newErrors);
+    
+    // Check if there are any errors
+    return !Object.values(newErrors).some(error => error);
   };
 
   const handleSubmit = async () => {
-    if (
-      (discountData.discountType === 'flat' && (!discountData.discountValue || parseFloat(discountData.discountValue) <= 0)) ||
-      (discountData.discountType === 'percentage' && (!discountData.discountPercentage || parseFloat(discountData.discountPercentage) <= 0)) ||
-      !discountData.validUntil
-    ) {
+    // Validate all fields before submission
+    if (!validateForm()) {
       Swal.fire({
         icon: 'error',
-        title: 'Invalid Input',
-        text: 'Please fill in all required fields with valid values',
+        title: 'Validation Error',
+        text: 'Please correct the errors in the form',
         confirmButtonColor: '#89198f',
       });
       return;
@@ -420,12 +488,15 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
                     name="discountValue"
                     value={discountData.discountValue}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border-2 ${errors.discountValue ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-purple-500`}
                     placeholder="Enter amount (e.g., 5)"
                     min="0"
                     step="0.01"
                     required
                   />
+                  {errors.discountValue && (
+                    <p className="mt-1 text-sm text-red-600">{errors.discountValue}</p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -435,13 +506,16 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
                     name="discountPercentage"
                     value={discountData.discountPercentage}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border-2 ${errors.discountPercentage ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-purple-500`}
                     placeholder="Enter percentage (e.g., 10)"
-                    min="0"
+                    min="1"
                     max="100"
                     step="1"
                     required
                   />
+                  {errors.discountPercentage && (
+                    <p className="mt-1 text-sm text-red-600">{errors.discountPercentage}</p>
+                  )}
                 </div>
               )}
 
@@ -452,9 +526,13 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
                   name="validUntil"
                   value={discountData.validUntil}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className={`w-full px-4 py-2 border-2 ${errors.validUntil ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-purple-500`}
+                  min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                   required
                 />
+                {errors.validUntil && (
+                  <p className="mt-1 text-sm text-red-600">{errors.validUntil}</p>
+                )}
               </div>
 
               <div>
@@ -464,9 +542,12 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
                   name="promoCode"
                   value={discountData.promoCode}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className={`w-full px-4 py-2 border-2 ${errors.promoCode ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-purple-500`}
                   placeholder="Enter promo code (optional)"
                 />
+                {errors.promoCode && (
+                  <p className="mt-1 text-sm text-red-600">{errors.promoCode}</p>
+                )}
               </div>
 
               <div>
@@ -476,11 +557,14 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
                   name="minimumPurchase"
                   value={discountData.minimumPurchase}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className={`w-full px-4 py-2 border-2 ${errors.minimumPurchase ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-purple-500`}
                   placeholder="Enter minimum purchase (optional)"
                   min="0"
                   step="0.01"
                 />
+                {errors.minimumPurchase && (
+                  <p className="mt-1 text-sm text-red-600">{errors.minimumPurchase}</p>
+                )}
               </div>
             </div>
 
