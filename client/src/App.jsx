@@ -32,6 +32,11 @@ import CreateUser from "./pages/usermanagement/Createuser";
  import AllUsers from "./pages/usermanagement/AllUsers";
 import Oneuser from "./pages/usermanagement/Oneuser";
 
+import Createfeedback from "./pages/feedback/Createfeedback";
+ import ReadAllfeedback from "./pages/feedback/ReadAllfeedback";
+ import Onefeedback from "./pages/feedback/Onefeedback";
+ import EditFeedback from "./pages/feedback/EditFeedback";
+
 export default function App() {
   return (
     // Single BrowserRouter wrapping the entire application
@@ -69,6 +74,11 @@ export default function App() {
          <Route path="/edituser/:id" element={<UpdateUser />}/>
         <Route path="/allusers" element={<AllUsers />}/>
         <Route path="/user/:id" element={<Oneuser />}/> 
+
+        <Route path="/createfeedback" element={<Createfeedback />}/>
+        <Route path="/allfeedback" element={<ReadAllfeedback />}/>
+        <Route path="/feedback/:id" element={<Onefeedback />}/>
+        <Route path="/editfeedback/:id" element={<EditFeedback />}/>
 
       </Routes>
     </Router>
