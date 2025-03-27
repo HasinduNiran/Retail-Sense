@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { FiX, FiPlus, FiEdit } from 'react-icons/fi';
+import { FiPlus, FiEdit } from 'react-icons/fi';
+import { MdLocalOffer } from "react-icons/md";
 import Swal from 'sweetalert2';
 import API_CONFIG from '../../config/apiConfig'; // Adjust path as needed
+import AddDiscount from './AddDiscount';
+import EditDiscount from './EditDiscount';
 import PropTypes from 'prop-types';
 
 const DiscountTable = () => {
@@ -12,12 +15,13 @@ const DiscountTable = () => {
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fetch RetrievedInventory and Promotions
   const fetchData = async () => {
     try {
-      const retrievedResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/inventory/retrieved/all`);
+      const retrievedResponse = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.ALL}`);
       console.log('Retrieved Response:', retrievedResponse.data);
       const retrievedData = retrievedResponse.data.data || retrievedResponse.data || [];
       const parsedItems = retrievedData.map(item => {
@@ -31,7 +35,7 @@ const DiscountTable = () => {
       });
       setRetrievedItems(parsedItems);
 
-      const promotionResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/promotions`);
+      const promotionResponse = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`);
       console.log('Promotions Response:', promotionResponse.data);
       const promotionData = promotionResponse.data.data || promotionResponse.data || [];
       setPromotions(promotionData);
@@ -74,8 +78,8 @@ const DiscountTable = () => {
     try {
       const existingPromo = getItemPromotion(item._id);
       const url = existingPromo
-        ? `${API_CONFIG.BASE_URL}/api/promotions/${existingPromo.promotionID}`
-        : `${API_CONFIG.BASE_URL}/api/promotions`;
+        ? `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}/${existingPromo.promotionID}`
+        : `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`;
       const method = existingPromo ? 'put' : 'post';
 
       // Calculate finalPrice based on discount type and amount
@@ -115,7 +119,7 @@ const DiscountTable = () => {
       // Update the finalPrice in RetrievedInventory - ensure we're sending valid JSON
       try {
         const finalPriceResponse = await axios.put(
-          `${API_CONFIG.BASE_URL}/api/inventory/retrieved/${item._id}`, 
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.SINGLE(item._id)}`, 
           { finalPrice: finalPrice }
         );
         console.log('Final price update response:', finalPriceResponse.data);
@@ -142,7 +146,7 @@ const DiscountTable = () => {
 
       await fetchData();
 
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
       setSelectedItem(null);
     } catch (error) {
       console.error('Error managing discount:', error);
@@ -151,6 +155,84 @@ const DiscountTable = () => {
         icon: 'error',
         title: 'Error',
         text: error.response?.data?.message || 'Failed to manage discount',
+        confirmButtonColor: '#89198f',
+      });
+    }
+  };
+
+  // Handle editing a promotion
+  const handleUpdateDiscount = async (item, discountData) => {
+    try {
+      const existingPromo = getItemPromotion(item._id);
+      if (!existingPromo) {
+        throw new Error("No promotion found to update");
+      }
+
+      // Rest of the update logic is the same as handleAddDiscount
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}/${existingPromo.promotionID}`;
+      
+      // Calculate finalPrice based on discount type and amount
+      let finalPrice = item.unitPrice || 0;
+      if (discountData.discountType === 'flat' && discountData.discountValue) {
+        finalPrice = Math.max(0, finalPrice - parseFloat(discountData.discountValue));
+      } else if (discountData.discountType === 'percentage' && discountData.discountPercentage) {
+        const discountAmount = (finalPrice * parseFloat(discountData.discountPercentage)) / 100;
+        finalPrice = Math.max(0, finalPrice - discountAmount);
+      }
+
+      // Ensure finalPrice is a valid number
+      finalPrice = isNaN(finalPrice) ? 0 : finalPrice;
+      
+      console.log('Calculated finalPrice:', finalPrice);
+
+      const promotionData = {
+        promotionID: existingPromo.promotionID,
+        type: discountData.type,
+        discountValue: discountData.discountType === 'flat' ? parseFloat(discountData.discountValue) : undefined,
+        discountPercentage: discountData.discountType === 'percentage' ? parseFloat(discountData.discountPercentage) : undefined,
+        discountType: discountData.discountType,
+        validUntil: discountData.validUntil,
+        promoCode: discountData.promoCode || `DISC${item.inventoryID}`,
+        applicableProducts: [item._id],
+        minimumPurchase: parseFloat(discountData.minimumPurchase) || 0,
+      };
+
+      const response = await axios.put(url, promotionData);
+      console.log('Discount Update Response:', response.data);
+
+      // Update the finalPrice in RetrievedInventory
+      try {
+        const finalPriceResponse = await axios.put(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.SINGLE(item._id)}`, 
+          { finalPrice: finalPrice }
+        );
+        console.log('Final price update response:', finalPriceResponse.data);
+      } catch (finalPriceError) {
+        console.error('Error updating final price:', finalPriceError);
+      }
+
+      const updatedPromo = response.data.data || response.data;
+      setPromotions(prev =>
+        prev.map(p => (p.promotionID === existingPromo.promotionID ? updatedPromo : p))
+      );
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Discount updated successfully!',
+        confirmButtonColor: '#89198f',
+      });
+
+      await fetchData();
+
+      setIsEditModalOpen(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error updating discount:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || error.message || 'Failed to update discount',
         confirmButtonColor: '#89198f',
       });
     }
@@ -175,13 +257,18 @@ const DiscountTable = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6"
+      className="min-h-screen bg-PrimaryColor p-6"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold text-purple-800 mb-6">Discount Management</h2>
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto border-2 border-SecondaryColor">
+        <h2 className="text-2xl font-bold text-DarkColor mb-6 flex items-center">
+          <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+            <MdLocalOffer className="text-DarkColor" size={24} />
+          </div>
+          Discount Management
+        </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-700">
-            <thead className="bg-purple-100 text-purple-800">
+            <thead className="bg-PrimaryColor text-DarkColor">
               <tr>
                 <th className="p-4 font-semibold rounded-tl-lg">Image</th>
                 <th className="p-4 font-semibold">Item Name</th>
@@ -248,9 +335,13 @@ const DiscountTable = () => {
                         <button
                           onClick={() => {
                             setSelectedItem(item);
-                            setIsModalOpen(true);
+                            if (promo) {
+                              setIsEditModalOpen(true);
+                            } else {
+                              setIsAddModalOpen(true);
+                            }
                           }}
-                          className="p-2 text-purple-600 hover:text-purple-800 transition-colors"
+                          className="p-2 text-DarkColor hover:text-SecondaryColor transition-colors"
                           title={promo ? 'Edit Discount' : 'Add Discount'}
                         >
                           {promo ? <FiEdit size={20} /> : <FiPlus size={20} />}
@@ -271,247 +362,48 @@ const DiscountTable = () => {
         </div>
       </div>
 
-      <DiscountModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedItem(null);
-        }}
-        item={selectedItem}
-        onAddDiscount={handleAddDiscount}
-        existingPromo={selectedItem ? getItemPromotion(selectedItem?._id) : null}
-      />
+      {/* Add Modal */}
+      <AnimatePresence>
+        {isAddModalOpen && selectedItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setIsAddModalOpen(false)}
+          >
+            <AddDiscount 
+              isOpen={isAddModalOpen}
+              onClose={() => setIsAddModalOpen(false)}
+              item={selectedItem}
+              onAddDiscount={handleAddDiscount}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {isEditModalOpen && selectedItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setIsEditModalOpen(false)}
+          >
+            <EditDiscount 
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              item={selectedItem}
+              onUpdateDiscount={handleUpdateDiscount}
+              existingPromo={getItemPromotion(selectedItem._id)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
-};
-
-const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) => {
-  const [discountData, setDiscountData] = useState({
-    type: existingPromo?.type || 'Discount Code',
-    discountValue: existingPromo?.discountValue || '',
-    discountPercentage: existingPromo?.discountPercentage || '',
-    discountType: existingPromo?.discountType || 'flat',
-    validUntil: existingPromo?.validUntil
-      ? format(new Date(existingPromo.validUntil), "yyyy-MM-dd'T'HH:mm")
-      : '',
-    promoCode: existingPromo?.promoCode || '',
-    minimumPurchase: existingPromo?.minimumPurchase || '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setDiscountData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async () => {
-    if (
-      (discountData.discountType === 'flat' && (!discountData.discountValue || parseFloat(discountData.discountValue) <= 0)) ||
-      (discountData.discountType === 'percentage' && (!discountData.discountPercentage || parseFloat(discountData.discountPercentage) <= 0)) ||
-      !discountData.validUntil
-    ) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Input',
-        text: 'Please fill in all required fields with valid values',
-        confirmButtonColor: '#89198f',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onAddDiscount(item, discountData);
-      setDiscountData({
-        type: 'Discount Code',
-        discountValue: '',
-        discountPercentage: '',
-        discountType: 'flat',
-        validUntil: '',
-        promoCode: '',
-        minimumPurchase: '',
-      });
-    } catch (error) {
-      console.error('Error in discount submit:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && item && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <FiX size={24} />
-            </button>
-
-            <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
-              <span className="bg-purple-600 text-white p-2 rounded-full mr-3">
-                <FiPlus size={20} />
-              </span>
-              {existingPromo ? 'Edit Discount' : 'Add Discount'}
-            </h2>
-
-            <div className="mb-6 flex items-start gap-4">
-              <img
-                src={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : '/default-img.jpg'}
-                alt={item.ItemName}
-                className="w-20 h-20 object-cover rounded-lg shadow-sm"
-                onError={(e) => { e.target.src = '/default-img.jpg'; }}
-              />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">{item.ItemName}</h3>
-                <p className="text-gray-600">Category: {item.Category}</p>
-                <p className="text-gray-600">Price: {item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Promotion Type</label>
-                <select
-                  name="type"
-                  value={discountData.type}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="Discount Code">Discount Code</option>
-                  <option value="Loyalty">Loyalty</option>
-                  <option value="Flash Sale">Flash Sale</option>
-                  <option value="Bundle">Bundle</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
-                <select
-                  name="discountType"
-                  value={discountData.discountType}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="flat">Flat Amount</option>
-                  <option value="percentage">Percentage</option>
-                </select>
-              </div>
-
-              {discountData.discountType === 'flat' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Discount Amount *</label>
-                  <input
-                    type="number"
-                    name="discountValue"
-                    value={discountData.discountValue}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    placeholder="Enter amount (e.g., 5)"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Discount Percentage *</label>
-                  <input
-                    type="number"
-                    name="discountPercentage"
-                    value={discountData.discountPercentage}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    placeholder="Enter percentage (e.g., 10)"
-                    min="0"
-                    max="100"
-                    step="1"
-                    required
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valid Until *</label>
-                <input
-                  type="datetime-local"
-                  name="validUntil"
-                  value={discountData.validUntil}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Promo Code</label>
-                <input
-                  type="text"
-                  name="promoCode"
-                  value={discountData.promoCode}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter promo code (optional)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Purchase</label>
-                <input
-                  type="number"
-                  name="minimumPurchase"
-                  value={discountData.minimumPurchase}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter minimum purchase (optional)"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Discount'}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-DiscountModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  item: PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    ItemName: PropTypes.string.isRequired,
-    Category: PropTypes.string,
-    unitPrice: PropTypes.number,
-    image: PropTypes.string,
-  }),
-  onAddDiscount: PropTypes.func.isRequired,
-  existingPromo: PropTypes.object,
 };
 
 export default DiscountTable;

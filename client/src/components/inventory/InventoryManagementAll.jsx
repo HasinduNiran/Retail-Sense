@@ -117,7 +117,7 @@ function InventoryManagementAll() {
     setError(null);
 
     try {
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}?page=${page}&limit=${limit}`;
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}?page=${page}&limit=${limit}`;
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -174,7 +174,7 @@ function InventoryManagementAll() {
       });
 
       if (result.isConfirmed) {
-        await axios.delete(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`);
+        await axios.delete(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${id}`);
         setInventoryItems(prev => prev.filter(item => (item.inventoryID || item._id) !== id));
         Swal.fire({
           icon: 'success',

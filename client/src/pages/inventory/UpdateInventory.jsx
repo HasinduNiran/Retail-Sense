@@ -68,7 +68,7 @@ function UpdateInventory() {
     const fetchInventory = async () => {
       setLoading(true);
       try {
-        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
+        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${id}`;
         const response = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -221,7 +221,7 @@ function UpdateInventory() {
         }
       });
 
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${id}`;
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${id}`;
       const response = await fetch(url, {
         method: "PUT",
         body: formDataToSend,

@@ -39,7 +39,7 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
     }
 
     try {
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}/stock-status`;
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${item.inventoryID}/stock-status`;
       const updateData = {
         Quantity: newQuantity,
         action, // Add action type (add/retrieve)
