@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
-// import mongooseSequence from 'mongoose-sequence'; // Import mongoose-sequence correctly
+import mongooseSequence from 'mongoose-sequence'; // Import mongoose-sequence
+
+const connection = mongoose.connection; // Get mongoose connection
 
 const userSchema = new mongoose.Schema({
   userID: { type: Number, unique: true },
@@ -10,9 +12,8 @@ const userSchema = new mongoose.Schema({
   mobile: { type: Number, required: true },
 });
 
-// Auto-increment for userID
-// userSchema.plugin(mongooseSequence, { inc_field: 'userID' });
+// Auto-increment plugin
+userSchema.plugin(mongooseSequence(connection), { inc_field: 'userID', start_seq: 1 });
 
 const User = mongoose.model('User', userSchema);
-
 export default User;

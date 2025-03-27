@@ -14,7 +14,7 @@ import CustomizePage from "./pages/customize/CustomizePage";
 // Promotion Route
 
 
-//dewni
+
 
 import UpdateInventory from "./pages/inventory/UpdateInventory";
 import DeleteInventory from "./pages/inventory/DeleteInventory";
@@ -22,10 +22,15 @@ import InventoryManagementAll from "./components/inventory/InventoryManagementAl
 import CreateInventory from "./pages/inventory/CreateInventory";
 import RetrievedInventoryTable from './components/inventory/RetrievedInventoryTable';
 
-//Shadini
+
 import AddOffer from "./components/discount&offer/AddOffer";
 import PromotionReport from "./components/discount&offer/PromotionReport";
 import UpdateOffer from "./components/discount&offer/UpdateOffer";
+
+import CreateUser from "./pages/usermanagement/Createuser";
+ import UpdateUser from "./pages/usermanagement/EditUser";
+ import AllUsers from "./pages/usermanagement/AllUsers";
+import Oneuser from "./pages/usermanagement/Oneuser";
 
 export default function App() {
   return (
@@ -59,6 +64,12 @@ export default function App() {
         <Route path="/retrieved-inventory" element={<RetrievedInventoryTable />} />
         {/* <Route path="/update/:id" element={<UpdateOffer />}></Route> */}
         {/* <Route path="/update/:id* " element={<DeleteOffer />}></Route> */}
+
+        <Route path="/adduser" element={<CreateUser />}/>
+         <Route path="/edituser/:id" element={<UpdateUser />}/>
+        <Route path="/allusers" element={<AllUsers />}/>
+        <Route path="/user/:id" element={<Oneuser />}/> 
+
       </Routes>
     </Router>
   );

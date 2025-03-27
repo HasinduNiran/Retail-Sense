@@ -4,23 +4,23 @@ import bcryptjs from 'bcryptjs';
 // Create a new User
 export const createUser = async (req, res) => {
   try {
-    const {userID, UserName, email, password, address, mobile } = req.body;
+    const { UserName, email, password, address, mobile } = req.body;
     const hashedPassword = bcryptjs.hashSync(password, 10);
+    
     const newUser = new User({
-        userID,
       UserName,
       email,
       password: hashedPassword,
       address,
       mobile,
     });
+
     await newUser.save();
     res.status(201).json({ success: true, message: "User created successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
