@@ -5,6 +5,7 @@ const API_CONFIG = {
     PROMOTIONS: "/api/promotions",
     INVENTORY: "/api/inventory", // Added inventory endpoint
     USER: "/api/users", // Added user endpoint
+    FEEDBACK: "/api/feedbacks", // Added feedback endpoint
   },
 };
 
