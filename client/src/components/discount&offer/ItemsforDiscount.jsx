@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { FiEdit, FiSearch, FiDownload, FiTrash } from 'react-icons/fi';
+import { FiEdit, FiSearch, FiDownload, FiTrash, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { MdLocalOffer } from "react-icons/md";
 import Swal from 'sweetalert2';
 import API_CONFIG from '../../config/apiConfig';
@@ -22,7 +22,7 @@ const ItemsforDiscount = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredItems, setFilteredItems] = useState([]);
 
-  // Get promotion details for a specific item
+  // Get promotion details for a specific item, regardless of active status
   const getItemPromotion = (itemId) => {
     const itemIdStr = itemId.toString();
     const promo = promotions.find(promo => {
@@ -57,9 +57,11 @@ const ItemsforDiscount = () => {
       const promotionResponse = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`);
       console.log('Promotions Response:', promotionResponse.data);
       const promotionData = promotionResponse.data.data || promotionResponse.data || [];
+      
+      // Store all promotions
       setPromotions(promotionData);
 
-      // Filter items that have promotions applied to them
+      // Filter items that have ANY promotions applied to them (active or inactive)
       if (parsedItems.length > 0 && promotionData.length > 0) {
         const itemsWithDiscounts = parsedItems.filter(item => {
           return promotionData.some(promo => {
@@ -242,6 +244,96 @@ const ItemsforDiscount = () => {
         confirmButtonColor: '#89198f',
       });
     }
+  };
+
+  // Handle toggling promotion active status
+  const handleToggleStatus = async (item) => {
+    try {
+      // Find promotion for this item (including inactive ones)
+      const promo = getItemPromotion(item._id);
+      
+      if (!promo) {
+        throw new Error("No promotion found to update status");
+      }
+
+      const newStatus = !promo.isActive;
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}/${promo.promotionID}`;
+      
+      // If activating the promotion, we need to update the finalPrice
+      if (newStatus) {
+        // Calculate finalPrice based on discount type and amount
+        let finalPrice = item.unitPrice || 0;
+        if (promo.discountType === 'flat' && promo.discountValue) {
+          finalPrice = Math.max(0, finalPrice - promo.discountValue);
+        } else if (promo.discountType === 'percentage' && promo.discountPercentage) {
+          const discountAmount = (finalPrice * promo.discountPercentage) / 100;
+          finalPrice = Math.max(0, finalPrice - discountAmount);
+        }
+        
+        // Update the item's finalPrice only if activating the promotion
+        try {
+          await axios.put(
+            `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.SINGLE(item._id)}`, 
+            { finalPrice: finalPrice }
+          );
+        } catch (finalPriceError) {
+          console.error('Error updating final price:', finalPriceError);
+        }
+      } else {
+        // If deactivating, reset finalPrice to unit price
+        try {
+          await axios.put(
+            `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.SINGLE(item._id)}`, 
+            { finalPrice: item.unitPrice }
+          );
+        } catch (finalPriceError) {
+          console.error('Error resetting final price:', finalPriceError);
+        }
+      }
+      
+      // Update the promotion's isActive status
+      const response = await axios.put(url, { 
+        ...promo,
+        isActive: newStatus 
+      });
+      
+      console.log('Status Toggle Response:', response.data);
+      
+      // Update local state
+      setPromotions(prev => 
+        prev.map(p => (p.promotionID === promo.promotionID ? {...p, isActive: newStatus} : p))
+      );
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: `Discount ${newStatus ? 'activated' : 'deactivated'} successfully!`,
+        confirmButtonColor: '#89198f',
+      });
+      
+      // Refresh data to get up-to-date information
+      await fetchData();
+      
+    } catch (error) {
+      console.error('Error toggling promotion status:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || error.message || 'Failed to toggle discount status',
+        confirmButtonColor: '#89198f',
+      });
+    }
+  };
+  
+  // Get ALL promotions for an item (active and inactive)
+  const getAllItemPromotions = (itemId) => {
+    const itemIdStr = itemId.toString();
+    return promotions.filter(promo => {
+      return promo.applicableProducts.some(product => {
+        const productId = typeof product === 'object' && product._id ? product._id.toString() : product.toString();
+        return productId === itemIdStr;
+      });
+    });
   };
 
   const getImageUrl = (imagePath) => {
@@ -437,17 +529,18 @@ const ItemsforDiscount = () => {
               {filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
                   const promo = getItemPromotion(item._id);
+                  const isActive = promo?.isActive || false;
                   const discountAmount =
                     promo?.discountType === 'flat'
-                      ? promo.discountValue || 0
+                      ? promo?.discountValue || 0
                       : promo?.discountType === 'percentage' && item.unitPrice
-                      ? (item.unitPrice * (promo.discountPercentage || 0)) / 100
+                      ? (item.unitPrice * (promo?.discountPercentage || 0)) / 100
                       : 0;
 
                   return (
                     <tr
                       key={item._id}
-                      className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                      className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${!isActive ? 'bg-gray-50' : ''}`}
                     >
                       <td className="p-4">
                         <img
@@ -462,8 +555,8 @@ const ItemsforDiscount = () => {
                       <td className="p-4">{item.retrievedQuantity}</td>
                       <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
                       <td className="p-4">
-                        {promo && (
-                          <div className="text-green-600">
+                        {promo ? (
+                          <div className={`${isActive ? 'text-green-600' : 'text-gray-500'}`}>
                             <span>
                               {promo.discountType === 'flat'
                                 ? `$${promo.discountValue || 0} off`
@@ -472,15 +565,20 @@ const ItemsforDiscount = () => {
                             <span className="block text-sm text-gray-600">
                               Discount Amount: ${discountAmount.toFixed(2)}
                             </span>
-                            <span className="block text-sm text-purple-600 font-semibold">
-                              Final Price: ${item.finalPrice ? item.finalPrice.toFixed(2) : (item.unitPrice - discountAmount).toFixed(2)}
+                            <span className={`block text-sm font-semibold ${isActive ? 'text-purple-600' : 'text-gray-500'}`}>
+                              Final Price: ${isActive && item.finalPrice ? item.finalPrice.toFixed(2) : (item.unitPrice - (isActive ? discountAmount : 0)).toFixed(2)}
                             </span>
                             {promo.validUntil && (
                               <span className="block text-sm text-gray-500">
                                 Until: {format(new Date(promo.validUntil), 'MMM dd, yyyy')}
                               </span>
                             )}
+                            <span className={`block text-xs mt-1 font-medium ${isActive ? 'text-green-500' : 'text-red-500'}`}>
+                              Status: {isActive ? 'Active' : 'Inactive'}
+                            </span>
                           </div>
+                        ) : (
+                          <span className="text-gray-500">No discount</span>
                         )}
                       </td>
                       <td className="p-4">
@@ -501,6 +599,13 @@ const ItemsforDiscount = () => {
                             title="Delete Discount"
                           >
                             <FiTrash size={20} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(item)}
+                            className={`p-2 ${isActive ? 'text-green-500 hover:text-gray-500' : 'text-gray-400 hover:text-green-500'} transition-colors`}
+                            title={isActive ? "Deactivate Discount" : "Activate Discount"}
+                          >
+                            {isActive ? <FiToggleRight size={20} /> : <FiToggleLeft size={20} />}
                           </button>
                         </div>
                       </td>
