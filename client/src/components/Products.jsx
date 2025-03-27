@@ -64,8 +64,8 @@ const Products = () => {
     try {
       // Fetch both regular inventory and retrieved inventory items
       const [inventoryRes, retrievedRes] = await Promise.all([
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`)
+        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}`),
+        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.ALL}`)
       ]);
 
       const inventoryData = await inventoryRes.json();
