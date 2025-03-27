@@ -7,6 +7,7 @@ import { FaEdit } from "react-icons/fa";
 import { MdDeleteForever } from "react-icons/md";
 // import loadingimg from "../../assets/img/loading.gif";
 import Swal from "sweetalert2"; //for displaying alerts
+import API_CONFIG from "../../config/apiConfig";
 
 function InventoryTable() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ function InventoryTable() {
       setLoading(true);
       const searchQuery = urlParams.toString();
       try {
-        const res = await fetch(`/api/inventories/search/get?${searchQuery}`);
+        const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/search/get?${searchQuery}`);
         const data = await res.json();
         setInventories(data);
       } catch (error) {
@@ -73,7 +74,7 @@ function InventoryTable() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`/api/inventories/${inventoryId}`, {
+          const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${inventoryId}`, {
             method: "DELETE",
           });
           const data = await res.json();

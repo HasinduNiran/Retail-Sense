@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import jspdf from "jspdf";
 import "jspdf-autotable";
+import API_CONFIG from "../../config/apiConfig";
 // import "../../assets/css/user/userList.css";
 
 export default function InventoryReport({ inventory }) {

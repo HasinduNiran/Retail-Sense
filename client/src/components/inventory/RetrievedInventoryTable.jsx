@@ -67,7 +67,7 @@ const RetrievedInventoryTable = () => {
 
   const fetchRetrievedInventory = async () => {
     try {
-      const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/all`);
+      const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.ALL}`);
       
       // Process each item's colors and sizes
       const processedItems = response.data.map(item => {
@@ -154,7 +154,7 @@ const RetrievedInventoryTable = () => {
     try {
       // First, get the current inventory quantity
       const inventoryResponse = await axios.get(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}`
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${item.inventoryID}`
       );
 
       const currentInventory = inventoryResponse.data;
@@ -162,7 +162,7 @@ const RetrievedInventoryTable = () => {
 
       // Update the inventory with combined quantity
       await axios.put(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/${item.inventoryID}/stock-status`,
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${item.inventoryID}/stock-status`,
         {
           action: 'update',
           Quantity: newQuantity
@@ -171,7 +171,7 @@ const RetrievedInventoryTable = () => {
 
       // Then delete the retrieved item
       await axios.delete(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/retrieved/${item._id}`
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.SINGLE(item._id)}`
       );
 
       // Update local state
@@ -304,7 +304,7 @@ const RetrievedInventoryTable = () => {
         item={selectedItem}
         onSendToStore={async (item, unitPrice) => {
           try {
-            await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}/send-to-store/${item._id}`, {
+            await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/send-to-store/${item._id}`, {
               unitPrice: parseFloat(unitPrice)
             });
             

@@ -237,7 +237,7 @@ const CreateInventory = () => {
         }
       });
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY}`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}`, {
         method: 'POST',
         body: formDataToSend,
       });
