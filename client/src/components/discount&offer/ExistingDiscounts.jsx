@@ -293,15 +293,13 @@ const DiscountTable = () => {
 
 const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) => {
   const [discountData, setDiscountData] = useState({
-    type: existingPromo?.type || 'Discount Code',
-    discountValue: existingPromo?.discountValue || '',
-    discountPercentage: existingPromo?.discountPercentage || '',
-    discountType: existingPromo?.discountType || 'flat',
-    validUntil: existingPromo?.validUntil
-      ? format(new Date(existingPromo.validUntil), "yyyy-MM-dd'T'HH:mm")
-      : '',
-    promoCode: existingPromo?.promoCode || '',
-    minimumPurchase: existingPromo?.minimumPurchase || '',
+    type: 'Discount Code',
+    discountValue: '',
+    discountPercentage: '',
+    discountType: 'flat',
+    validUntil: '',
+    promoCode: '',
+    minimumPurchase: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
@@ -311,6 +309,34 @@ const DiscountModal = ({ isOpen, onClose, item, onAddDiscount, existingPromo }) 
     promoCode: '',
     minimumPurchase: ''
   });
+
+  // Add this useEffect to update form data when existingPromo changes
+  useEffect(() => {
+    if (existingPromo) {
+      setDiscountData({
+        type: existingPromo.type || 'Discount Code',
+        discountValue: existingPromo.discountValue || '',
+        discountPercentage: existingPromo.discountPercentage || '',
+        discountType: existingPromo.discountType || 'flat',
+        validUntil: existingPromo.validUntil
+          ? format(new Date(existingPromo.validUntil), "yyyy-MM-dd'T'HH:mm")
+          : '',
+        promoCode: existingPromo.promoCode || '',
+        minimumPurchase: existingPromo.minimumPurchase || '',
+      });
+    } else {
+      // Reset form when adding a new discount
+      setDiscountData({
+        type: 'Discount Code',
+        discountValue: '',
+        discountPercentage: '',
+        discountType: 'flat',
+        validUntil: '',
+        promoCode: '',
+        minimumPurchase: '',
+      });
+    }
+  }, [existingPromo]);
 
   const validateField = (name, value) => {
     switch (name) {
