@@ -243,20 +243,20 @@ const FashionItem = () => {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen flex flex-col items-center justify-center px-4">
-          <div className="text-center">
+        <div className="min-h-screen bg-PrimaryColor flex flex-col items-center justify-center px-4">
+          <div className="text-center bg-white p-8 rounded-2xl shadow-xl border-2 border-SecondaryColor">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <div className="space-x-4">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors"
+                className="bg-SecondaryColor text-white px-6 py-2 rounded-md hover:bg-DarkColor transition-colors"
               >
                 Retry
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                className="bg-DarkColor text-white px-6 py-2 rounded-md hover:opacity-90 transition-colors"
               >
                 Back to Products
               </button>
@@ -271,145 +271,158 @@ const FashionItem = () => {
   return (
     <>
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <button
-          onClick={() => navigate('/')}
-          className="mb-8 flex items-center text-purple-600 hover:text-purple-800 transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Products
-        </button>
-        {loading ? (
-          <div className="flex justify-center items-center h-screen">
-            <TailSpin height="80" width="80" color="#a98467" ariaLabel="loading" />
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-600">Error: {error}</div>
-        ) : fashionItem ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Product Image */}
-            <div className="relative">
-              <img
-                src={fashionItem.image ? `${API_CONFIG.BASE_URL}/${fashionItem.image}` : "/default-img.jpg"}
-                alt={fashionItem.ItemName}
-                className="w-full h-auto rounded-lg shadow-lg"
-              />
+      <div className="min-h-screen bg-PrimaryColor py-8">
+        <div className="container mx-auto px-4">
+          <button
+            onClick={() => navigate('/')}
+            className="mb-8 flex items-center text-DarkColor hover:text-SecondaryColor transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Products
+          </button>
+          {loading ? (
+            <div className="flex justify-center items-center h-screen">
+              <TailSpin height="80" width="80" color="#a98467" ariaLabel="loading" />
             </div>
-
-            {/* Product Details */}
-            <div className="space-y-6">
-              <h1 className="text-3xl font-bold text-gray-900">{fashionItem.ItemName}</h1>
-              <p className="text-gray-600">{fashionItem.Description}</p>
-              
-              {/* Price */}
-              <div className="text-2xl font-semibold text-purple-800">
-                ${(fashionItem.finalPrice || fashionItem.unitPrice || 0).toFixed(2)}
+          ) : error ? (
+            <div className="text-center text-red-600">Error: {error}</div>
+          ) : fashionItem ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Product Image */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor">
+                <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  <img
+                    src={fashionItem.image ? `${API_CONFIG.BASE_URL}/${fashionItem.image}` : "/default-img.jpg"}
+                    alt={fashionItem.ItemName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
 
-              {/* Size Selection */}
-              {fashionItem.Sizes && fashionItem.Sizes.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Size</label>
-                  <div className="flex flex-wrap gap-2">
-                    {fashionItem.Sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
-                          ${selectedSize === size
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                          }`}
-                      >
-                        {size.replace(/["\[\]]/g, '')}
-                      </button>
-                    ))}
-                  </div>
+              {/* Product Details */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor space-y-6">
+                <h1 className="text-3xl font-bold text-DarkColor">{fashionItem.ItemName}</h1>
+                <p className="text-gray-600">{fashionItem.Description}</p>
+                
+                {/* Price */}
+                <div className="text-2xl font-semibold text-DarkColor">
+                  ${(fashionItem.finalPrice || fashionItem.unitPrice || 0).toFixed(2)}
                 </div>
-              )}
 
-              {/* Color Selection */}
-              {fashionItem.Colors && fashionItem.Colors.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
-                  <div className="flex flex-wrap gap-3">
-                    {fashionItem.Colors.map((color) => {
-                      const colorValue = getColorValue(color);
-                      return (
+                {/* Size Selection */}
+                {fashionItem.Sizes && fashionItem.Sizes.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-DarkColor mb-2">Size</label>
+                    <div className="flex flex-wrap gap-2">
+                      {fashionItem.Sizes.map((size) => (
                         <button
-                          key={color}
-                          onClick={() => setSelectedColor(color)}
-                          className={`w-10 h-10 rounded-full transition-transform hover:scale-110
-                            ${selectedColor === color 
-                              ? 'ring-2 ring-offset-2 ring-purple-600 transform scale-110' 
-                              : 'ring-1 ring-gray-300'
+                          key={size}
+                          onClick={() => setSelectedSize(size)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
+                            ${selectedSize === size
+                              ? 'bg-DarkColor text-white'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                             }`}
-                          style={{ 
-                            backgroundColor: colorValue,
-                            boxShadow: selectedColor === color ? '0 0 0 2px white' : 'none'
-                          }}
-                          title={color}
-                        />
-                      );
-                    })}
+                        >
+                          {size.replace(/["\[\]]/g, '')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Color Selection */}
+                {fashionItem.Colors && fashionItem.Colors.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-DarkColor mb-2">Color</label>
+                    <div className="flex flex-wrap gap-3">
+                      {fashionItem.Colors.map((color) => {
+                        const colorValue = getColorValue(color);
+                        return (
+                          <button
+                            key={color}
+                            onClick={() => setSelectedColor(color)}
+                            className={`w-10 h-10 rounded-full transition-transform hover:scale-110
+                              ${selectedColor === color 
+                                ? 'ring-2 ring-offset-2 ring-SecondaryColor transform scale-110' 
+                                : 'ring-1 ring-gray-300'
+                              }`}
+                            style={{ 
+                              backgroundColor: colorValue,
+                              boxShadow: selectedColor === color ? '0 0 0 2px white' : 'none'
+                            }}
+                            title={color}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quantity */}
+                <div>
+                  <label className="block text-sm font-medium text-DarkColor">Quantity</label>
+                  <div className="mt-2 flex items-center space-x-4">
+                    <button
+                      onClick={handleDecrease}
+                      className="p-2 border rounded-md hover:bg-PrimaryColor"
+                    >
+                      -
+                    </button>
+                    <span className="text-lg font-medium">{quantity}</span>
+                    <button
+                      onClick={handleIncrease}
+                      className="p-2 border rounded-md hover:bg-PrimaryColor"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Quantity */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                <div className="mt-2 flex items-center space-x-4">
-                  <button
-                    onClick={handleDecrease}
-                    className="p-2 border rounded-md hover:bg-gray-100"
-                  >
-                    -
-                  </button>
-                  <span className="text-lg font-medium">{quantity}</span>
-                  <button
-                    onClick={handleIncrease}
-                    className="p-2 border rounded-md hover:bg-gray-100"
-                  >
-                    +
-                  </button>
+                {/* Add to Cart Button */}
+                <button
+                  onClick={handleAddToCart}
+                  className="w-full bg-SecondaryColor text-white py-3 px-6 rounded-md hover:bg-DarkColor transition-colors"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-600">Product not found</div>
+          )}
+
+          {/* Recommended Products */}
+          {inventories.length > 0 && (
+            <div className="mt-16">
+              <div className="flex items-center bg-white px-4 py-2 rounded-full shadow-md border-2 border-SecondaryColor mb-6 w-fit">
+                <div className="bg-PrimaryColor p-1.5 rounded-full mr-2 border-2 border-SecondaryColor">
+                  <svg className="text-DarkColor w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-DarkColor">You May Also Like</h2>
+              </div>
+              <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  {inventories.map((item) => (
+                    <ProductCard
+                      key={item._id}
+                      id={item._id}
+                      img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : "/default-img.jpg"}
+                      name={item.ItemName}
+                      price={item.finalPrice || item.unitPrice}
+                      category={item.Category}
+                      brand={item.Brand}
+                    />
+                  ))}
                 </div>
               </div>
-
-              {/* Add to Cart Button */}
-              <button
-                onClick={handleAddToCart}
-                className="w-full bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition-colors"
-              >
-                Add to Cart
-              </button>
             </div>
-          </div>
-        ) : (
-          <div className="text-center text-gray-600">Product not found</div>
-        )}
-
-        {/* Recommended Products */}
-        {inventories.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">You May Also Like</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {inventories.map((item) => (
-                <ProductCard
-                  key={item._id}
-                  id={item._id}
-                  img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : "/default-img.jpg"}
-                  name={item.ItemName}
-                  price={item.finalPrice || item.unitPrice}
-                  category={item.Category}
-                  brand={item.Brand}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <Footer />
     </>
