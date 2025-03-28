@@ -1,13 +1,19 @@
-import React from "react";
 import { Link } from 'react-router-dom';
 import { FaShoppingCart, FaStar, FaTag } from 'react-icons/fa';
+import PropTypes from 'prop-types';
 
-const ProductCard = ({ id, img, name, price, category, brand, quantity, originalPrice }) => {
+const ProductCard = ({ id, img, name, price = 0, category, brand, quantity = 0, originalPrice }) => {
   // Calculate discount percentage if originalPrice is provided
   const hasDiscount = originalPrice && originalPrice > price;
   const discountPercentage = hasDiscount 
     ? Math.round(((originalPrice - price) / originalPrice) * 100) 
     : 0;
+
+  // Format price with fallback to 0
+  const formatPrice = (value) => {
+    const numericValue = Number(value);
+    return isNaN(numericValue) ? '0.00' : numericValue.toFixed(2);
+  };
 
   return (
     <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col">
@@ -59,17 +65,17 @@ const ProductCard = ({ id, img, name, price, category, brand, quantity, original
         <div className="mb-4">
           {hasDiscount ? (
             <div className="flex items-center gap-2">
-              <p className="text-xl font-bold text-purple-800">${price.toFixed(2)}</p>
-              <p className="text-sm text-gray-500 line-through">${originalPrice.toFixed(2)}</p>
+              <p className="text-xl font-bold text-purple-800">${formatPrice(price)}</p>
+              <p className="text-sm text-gray-500 line-through">${formatPrice(originalPrice)}</p>
             </div>
           ) : (
-            <p className="text-xl font-bold text-purple-800">${price.toFixed(2)}</p>
+            <p className="text-xl font-bold text-purple-800">${formatPrice(price)}</p>
           )}
         </div>
         
         <div className="mt-auto">
           <Link 
-            to={`/product/${id}`} 
+            to={`/item/${id}`} 
             className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium ${
               quantity > 0 
                 ? 'bg-purple-700 hover:bg-purple-800 text-white' 
@@ -84,6 +90,17 @@ const ProductCard = ({ id, img, name, price, category, brand, quantity, original
       </div>
     </div>
   );
+};
+
+ProductCard.propTypes = {
+  id: PropTypes.string.isRequired,
+  img: PropTypes.string,
+  name: PropTypes.string.isRequired,
+  price: PropTypes.number,
+  category: PropTypes.string,
+  brand: PropTypes.string,
+  quantity: PropTypes.number,
+  originalPrice: PropTypes.number
 };
 
 export default ProductCard;
