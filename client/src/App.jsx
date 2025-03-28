@@ -29,7 +29,7 @@ import UpdateOffer from "./components/discount&offer/UpdateOffer";
 
 import CreateUser from "./pages/usermanagement/Createuser";
  import UpdateUser from "./pages/usermanagement/EditUser";
- import AllUsers from "./pages/usermanagement/AllUsers";
+ //import AllUsers from "./pages/usermanagement/AllUsers";
 import Oneuser from "./pages/usermanagement/Oneuser";
 
 import Createfeedback from "./pages/feedback/Createfeedback";
@@ -74,7 +74,7 @@ export default function App() {
 
         <Route path="/adduser" element={<CreateUser />}/>
          <Route path="/edituser/:id" element={<UpdateUser />}/>
-        <Route path="/allusers" element={<AllUsers />}/>
+        {/* <Route path="/allusers" element={<AllUsers />}/> */}
         <Route path="/user/:id" element={<Oneuser />}/> 
 
         <Route path="/createfeedback" element={<Createfeedback />}/>

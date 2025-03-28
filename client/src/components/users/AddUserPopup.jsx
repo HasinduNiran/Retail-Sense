@@ -1,98 +1,112 @@
 import React, { useState } from "react";
-import axios from "axios";
-import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  FaUser,
-  FaEnvelope,
-  FaLock,
-  FaUserTie,
-  FaTimes,
-  FaSpinner,
-} from "react-icons/fa";
+import { FiArrowLeft } from "react-icons/fi";
+import { MdPersonAdd } from "react-icons/md";
+import { BsPerson, BsEnvelope, BsLock, BsHouse, BsPhone } from "react-icons/bs";
+import { FaUserTie } from "react-icons/fa"; // For usertype dropdown
+import ClipLoader from "react-spinners/ClipLoader";
+import Swal from "sweetalert2";
+import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 
-const AddUserPopup = ({ closePopup, refreshUsers }) => {
+function CreateUser() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    firstname: "",
-    lastname: "",
-    username: "",
+    UserName: "",
     email: "",
     password: "",
-    usertype: "customer",
+    address: "",
+    mobile: "",
+    role: "", // Default value
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleInputChange = (e) => {
+  // Handle form input changes
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
+  // Email validation
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation checks
-    if (!validateEmail(formData.email)) {
-      Swal.fire({
-        icon: "error",
-        title: "Invalid Email!",
-        text: "Please enter a valid email address.",
-        confirmButtonColor: "#d4a373",
-      });
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      Swal.fire({
-        icon: "error",
-        title: "Weak Password!",
-        text: "Password must be at least 8 characters long.",
-        confirmButtonColor: "#d4a373",
-      });
-      return;
-    }
-
     setLoading(true);
+    setError(null);
+
+    // Basic validation
+    if (!/^\d{10}$/.test(formData.mobile)) {
+      setError("Mobile number must be 10 digits");
+      setLoading(false);
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError("Please enter a valid email address");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await axios.post("/api/user/add", {
-        ...formData,
-        ismanager: formData.usertype === "manager",
+      const userData = {
+        UserName: formData.UserName,
+        email: formData.email,
+        password: formData.password,
+        address: formData.address || undefined,
+        mobile: Number(formData.mobile),
+        role: formData.role,
+      };
+
+      const url = `${API_CONFIG.BASE_URL}/api/users`; // Adjust endpoint as needed
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
       });
-      setLoading(false);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to create user");
+      }
+
       Swal.fire({
-        icon: "success",
-        title: "Success!",
-        text: "User has been added successfully.",
-        confirmButtonColor: "#d4a373",
-      });
-      refreshUsers();
-      closePopup();
-    } catch (error) {
-      setLoading(false);
-      console.error("Error adding user:", error);
+             icon: "success",
+             title: "Success!",
+             text: "User created successfully!",
+             confirmButtonColor: "#89198f",
+           }).then(() => {
+             window.location.reload(); // Refresh page after adding a user
+           });
+    } catch (err) {
       Swal.fire({
         icon: "error",
         title: "Error!",
-        text: "There was an error adding the user.",
-        confirmButtonColor: "#d4a373",
+        text: err.message,
+        confirmButtonColor: "#89198f",
       });
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const inputFields = [
-    { name: "firstname", label: "First Name", icon: FaUser },
-    { name: "lastname", label: "Last Name", icon: FaUser },
-    { name: "username", label: "Username", icon: FaUser },
-    { name: "email", label: "Email", type: "email", icon: FaEnvelope },
-    { name: "password", label: "Password", type: "password", icon: FaLock },
-  ];
 
   return (
     <AnimatePresence>
@@ -106,64 +120,153 @@ const AddUserPopup = ({ closePopup, refreshUsers }) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md"
+          className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor"
         >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-[#775c41]">Add New User</h2>
-            <button
-              onClick={closePopup}
-              className="text-[#775c41] hover:text-[#d4a373] transition duration-300"
-            >
-              <FaTimes size={24} />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {inputFields.map((field) => (
-              <div key={field.name} className="relative">
-                <field.icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type={field.type || "text"}
-                  name={field.name}
-                  placeholder={field.label}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#d4a373] transition duration-300"
-                  value={formData[field.name]}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            ))}
-            <div className="relative">
-              <FaUserTie className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <select
-                name="usertype"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#d4a373] transition duration-300 appearance-none"
-                value={formData.usertype}
-                onChange={handleInputChange}
-                required
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8 border-b-2 border-SecondaryColor pb-4">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate(-1)}
+                className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
               >
-                <option value="customer">Customer</option>
-                <option value="manager">Manager</option>
-              </select>
+                <FiArrowLeft size={20} />
+              </button>
+              <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+                <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+                  <MdPersonAdd className="text-DarkColor" size={24} />
+                </div>
+                Create New User
+              </h1>
             </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                {error}
+              </div>
+            )}
+
+            {/* UserName */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsPerson className="mr-2" size={20} />
+                Username
+              </label>
+              <input
+                type="text"
+                name="UserName"
+                value={formData.UserName}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter username"
+                required
+              />
+            </div>
+
+            {/* Email */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsEnvelope className="mr-2" size={20} />
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter email"
+                required
+              />
+            </div>
+
+            {/* Password */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsLock className="mr-2" size={20} />
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter password"
+                required
+              />
+            </div>
+
+            {/* Address */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsHouse className="mr-2" size={20} />
+                Address
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter address"
+              />
+            </div>
+
+            {/* Mobile */}
+            <div className="bg-PrimaryColor p-4 rounded-lg">
+              <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                <BsPhone className="mr-2" size={20} />
+                Mobile
+              </label>
+              <input
+                type="number"
+                name="mobile"
+                value={formData.mobile}
+                onChange={handleChange}
+                className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                placeholder="Enter mobile number"
+                required
+              />
+            </div>
+  {/* Role Selection */}
+  <div className="bg-PrimaryColor p-4 rounded-lg">
+            <label className="block text-DarkColor font-medium mb-2">
+              Role
+            </label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="w-full p-3 border-2 border-SecondaryColor rounded-lg"
+            >
+              <option value="customer">Customer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+            {/* Submit Button */}
             <motion.button
               type="submit"
-              className="w-full bg-[#d4a373] text-white py-2 rounded-md hover:bg-[#a98467] transition duration-300 flex items-center justify-center"
+              disabled={loading}
+              className="w-full bg-DarkColor text-white p-4 rounded-lg flex items-center justify-center hover:opacity-90 transition-all font-bold shadow-lg disabled:opacity-50"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              disabled={loading}
             >
               {loading ? (
-                <FaSpinner className="animate-spin mr-2" />
+                <ClipLoader color="#fff" size={24} className="mr-2" />
               ) : (
-                <FaUser className="mr-2" />
+                <MdPersonAdd className="mr-2" size={24} />
               )}
-              {loading ? "Adding User..." : "Add User"}
+              {loading ? "Creating User..." : "Create User"}
             </motion.button>
           </form>
         </motion.div>
       </motion.div>
     </AnimatePresence>
   );
-};
+}
 
-export default AddUserPopup;
+export default CreateUser;

@@ -1,18 +1,24 @@
-import User from '../models/user.model.js';
-import bcryptjs from 'bcryptjs';
+import User from "../models/user.model.js";
+import bcryptjs from "bcryptjs";
 
 // Create a new User
 export const createUser = async (req, res) => {
   try {
-    const { UserName, email, password, address, mobile } = req.body;
+    const { UserName, email, password, address, mobile, role } = req.body;
+
+    // Hash the password
     const hashedPassword = bcryptjs.hashSync(password, 10);
-    
+
+    // Ensure role is either "manager" or defaults to "customer"
+    // const userRole = role === "manager" ? "manager" : "customer";
+
     const newUser = new User({
       UserName,
       email,
       password: hashedPassword,
       address,
       mobile,
+      role,
     });
 
     await newUser.save();
@@ -21,6 +27,7 @@ export const createUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
@@ -47,10 +54,14 @@ export const getUserById = async (req, res) => {
 // Update a user
 export const updateUser = async (req, res) => {
   try {
-    const { UserName, email, address, mobile } = req.body;
+    const { UserName, email, address, mobile, role } = req.body;
+
+    // Ensure role is either "manager" or defaults to "customer"
+    const userRole = role === "manager" ? "manager" : "customer";
+
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
-      { UserName, email, address, mobile },
+      { UserName, email, address, mobile, role: userRole },
       { new: true, runValidators: true }
     );
     if (!updatedUser) {
