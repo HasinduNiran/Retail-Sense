@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import ProductCard from "../../layouts/ProductCard";
-import Slider from "react-slick";
 import Swal from "sweetalert2";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -9,13 +8,15 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { useSelector } from "react-redux";
 import { TailSpin } from "react-loader-spinner";
+import API_CONFIG from "../../config/apiConfig.js";
 
 const FashionItem = () => {
-  const { id } = useParams(); // Get item ID from URL parameters
-  const { currentUser } = useSelector((state) => state.user); // Get user from Redux
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { currentUser } = useSelector((state) => state.user);
 
   // State hooks
-  const [fashionItem, setFashionItem] = useState([]);
+  const [fashionItem, setFashionItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -23,46 +24,163 @@ const FashionItem = () => {
   const [selectedColor, setSelectedColor] = useState("");
   const [inventories, setInventories] = useState([]);
 
+  // Parse arrays from server response
+  const parseSizes = (sizes) => {
+    if (!sizes) return [];
+    try {
+      // If it's already an array, clean and return it
+      if (Array.isArray(sizes)) {
+        return sizes.map(s => s.replace(/["\[\]]/g, '').trim());
+      }
+      // Try parsing as JSON
+      const parsed = JSON.parse(sizes);
+      if (Array.isArray(parsed)) {
+        return parsed.map(s => s.replace(/["\[\]]/g, '').trim());
+      }
+      // Split by comma if it's a string
+      return sizes
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    } catch {
+      return sizes
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+  };
+
+  const parseColors = (colors) => {
+    if (!colors) return [];
+    try {
+      // If it's already an array, clean and return it
+      if (Array.isArray(colors)) {
+        return colors.map(c => c.replace(/["\[\]]/g, '').trim());
+      }
+      // Try parsing as JSON
+      const parsed = JSON.parse(colors);
+      if (Array.isArray(parsed)) {
+        return parsed.map(c => c.replace(/["\[\]]/g, '').trim());
+      }
+      // Split by comma if it's a string
+      return colors
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(c => c.startsWith('#') || isValidColorName(c));
+    } catch {
+      return colors
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(c => c.startsWith('#') || isValidColorName(c));
+    }
+  };
+
+  // Helper function to validate color names
+  const isValidColorName = (color) => {
+    const validColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'purple', 'orange',
+      'pink', 'brown', 'gray', 'navy', 'teal', 'maroon', 'olive'
+    ];
+    return validColors.includes(color.toLowerCase());
+  };
+
+  // Convert color name to hex
+  const getColorValue = (color) => {
+    if (color.startsWith('#')) return color;
+    
+    // Create a temporary element to convert color names to hex
+    const tempEl = document.createElement('div');
+    tempEl.style.color = color;
+    document.body.appendChild(tempEl);
+    const computedColor = window.getComputedStyle(tempEl).color;
+    document.body.removeChild(tempEl);
+    
+    // Convert rgb to hex
+    if (computedColor.startsWith('rgb')) {
+      const [r, g, b] = computedColor.match(/\d+/g);
+      return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`;
+    }
+    
+    return color;
+  };
+
   // Fetch item data from backend API
   useEffect(() => {
     const fetchItem = async () => {
       try {
-        const response = await fetch(`/api/inventories/${id}`);
+        setLoading(true);
+        setError(null);
+        console.log('Fetching item with ID:', id);
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/inventory/${id}`);
         if (!response.ok) {
-          throw new Error("Failed to fetch item data.");
+          throw new Error(`Failed to fetch item data (Status: ${response.status})`);
         }
+        
         const data = await response.json();
-        setFashionItem(data);
-        setSelectedSize(data.Sizes[0] || "");
-        setSelectedColor(data.Colors[0] || "");
-        setLoading(false);
+        console.log('Fetched item data:', data);
+        
+        if (!data) {
+          throw new Error('No data received from server');
+        }
+
+        // Parse sizes and colors
+        const parsedSizes = parseSizes(data.Sizes);
+        const parsedColors = parseColors(data.Colors);
+        
+        setFashionItem({
+          ...data,
+          Sizes: parsedSizes,
+          Colors: parsedColors
+        });
+        
+        // Set initial selections
+        setSelectedSize(parsedSizes[0] || "");
+        setSelectedColor(parsedColors[0] || "");
+        
       } catch (error) {
+        console.error('Error fetching item:', error);
         setError(error.message);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchItem();
+    if (id) {
+      fetchItem();
+    } else {
+      setError('No item ID provided');
+      setLoading(false);
+    }
   }, [id]);
 
   // Fetch recommended inventories
   useEffect(() => {
     const fetchInventories = async () => {
-      setLoading(true);
       try {
-        const res = await fetch(
-          `/api/inventories/search/get?limit=4` // Limiting the results
-        );
+        const res = await fetch(`${API_CONFIG.BASE_URL}/api/inventory`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch recommended items');
+        }
         const data = await res.json();
-        setInventories(data);
+        // Filter out current item and limit to 4 items
+        const filteredItems = data.items
+          .filter(item => item._id !== id)
+          .slice(0, 4);
+        setInventories(filteredItems);
       } catch (error) {
         console.error("Error fetching inventories:", error);
       }
-      setLoading(false);
     };
 
-    fetchInventories();
-  }, []);
+    if (!loading && fashionItem) {
+      fetchInventories();
+    }
+  }, [id, loading, fashionItem]);
 
   // Handle quantity changes
   const handleIncrease = () => setQuantity(quantity + 1);
@@ -87,8 +205,8 @@ const FashionItem = () => {
         userId: currentUser._id,
         itemId: id,
         title: fashionItem.ItemName,
-        img: fashionItem.imageUrls[0] || "",
-        price: fashionItem.UnitPrice,
+        img: fashionItem.image ? `${API_CONFIG.BASE_URL}/${fashionItem.image}` : "/default-img.jpg",
+        price: fashionItem.finalPrice || fashionItem.unitPrice,
         quantity,
         size: selectedSize,
         color: selectedColor,
@@ -110,7 +228,7 @@ const FashionItem = () => {
           window.location.href = "/cart";
         }
       });
-    } catch (error) {
+    } catch {
       Swal.fire({
         title: "Error!",
         text: "An error occurred while adding the item to the cart. Please try again.",
@@ -120,172 +238,181 @@ const FashionItem = () => {
     }
   };
 
-  // Handle size and color changes
-  const handleSizeChange = (e) => setSelectedSize(e.target.value);
-  const handleColorChange = (color) => setSelectedColor(color);
-
-  // If loading or error occurs, return appropriate messages
-  if (loading) {
+  // If there's an error, show it with a retry button
+  if (error) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <TailSpin height="80" width="80" color="#a98467" ariaLabel="loading" />
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-screen flex flex-col items-center justify-center px-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <div className="space-x-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Back to Products
+              </button>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
-  if (error) return <div>Error: {error}</div>;
-
-  // Slider settings
-  const settings = {
-    dots: true,
-    infinite: true,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 2000,
-    pauseOnHover: true,
-    arrows: false,
-    responsive: [
-      {
-        breakpoint: 1023,
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 3,
-          infinite: true,
-          dots: true,
-        },
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 2,
-          initialSlide: 2,
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-          initialSlide: 2,
-        },
-      },
-    ],
-  };
-
   return (
-    <div>
+    <>
       <Navbar />
-      <div
-        className="min-h-screen p-8 flex flex-col items-center"
-        style={{ backgroundColor: "#ffffff" }}
-      >
-        <div className="w-3/4 flex flex-col lg:flex-row items-center space-y-6 lg:space-y-0 lg:space-x-10 mt-16">
-          <div className="w-full lg:w-1/2">
-            <img
-              className="rounded-xl w-full transition-transform duration-300 transform hover:scale-105"
-              src={fashionItem.imageUrls[0]}
-              alt={fashionItem.ItemName}
-            />
+      <div className="container mx-auto px-4 py-8">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-8 flex items-center text-purple-600 hover:text-purple-800 transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Products
+        </button>
+        {loading ? (
+          <div className="flex justify-center items-center h-screen">
+            <TailSpin height="80" width="80" color="#a98467" ariaLabel="loading" />
           </div>
-          <div className="w-full lg:w-1/2 space-y-6">
-            <h1 className="text-4xl font-semibold">{fashionItem.ItemName}</h1>
-            <p className="text-lg text-gray-600">{fashionItem.description}</p>
-            <h2 className="text-2xl font-semibold">${fashionItem.UnitPrice}</h2>
-            <p className="text-md text-gray-500">
-              Available Stock: {fashionItem.StockQuantity}
-            </p>
-
-            {/* Size Selector */}
-            <div className="space-y-2">
-              <label className="block text-md font-medium">Select Size:</label>
-              <select
-                value={selectedSize}
-                onChange={handleSizeChange}
-                className="border border-gray-300 rounded px-3 py-2"
-              >
-                {fashionItem.Sizes?.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
+        ) : error ? (
+          <div className="text-center text-red-600">Error: {error}</div>
+        ) : fashionItem ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Product Image */}
+            <div className="relative">
+              <img
+                src={fashionItem.image ? `${API_CONFIG.BASE_URL}/${fashionItem.image}` : "/default-img.jpg"}
+                alt={fashionItem.ItemName}
+                className="w-full h-auto rounded-lg shadow-lg"
+              />
             </div>
 
-            {/* Color Selector */}
-            <div className="space-y-2">
-              <label className="block text-md font-medium">Select Color:</label>
-              <div className="flex space-x-3">
-                {fashionItem.Colors?.map((color) => (
-                  <button
-                    key={color}
-                    style={{ backgroundColor: color }}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      selectedColor === color
-                        ? "border-black"
-                        : "border-transparent"
-                    }`}
-                    onClick={() => handleColorChange(color)}
-                  />
-                ))}
+            {/* Product Details */}
+            <div className="space-y-6">
+              <h1 className="text-3xl font-bold text-gray-900">{fashionItem.ItemName}</h1>
+              <p className="text-gray-600">{fashionItem.Description}</p>
+              
+              {/* Price */}
+              <div className="text-2xl font-semibold text-purple-800">
+                ${(fashionItem.finalPrice || fashionItem.unitPrice || 0).toFixed(2)}
               </div>
-            </div>
 
-            {/* Quantity and Add to Cart Button */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleDecrease}
-                className="px-4 py-2 bg-gray-200 rounded-full"
-              >
-                -
-              </button>
-              <span className="text-xl">{quantity}</span>
-              <button
-                onClick={handleIncrease}
-                className="px-4 py-2 bg-gray-200 rounded-full"
-              >
-                +
-              </button>
-            </div>
-            <div className="flex space-x-4">
+              {/* Size Selection */}
+              {fashionItem.Sizes && fashionItem.Sizes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Size</label>
+                  <div className="flex flex-wrap gap-2">
+                    {fashionItem.Sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
+                          ${selectedSize === size
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          }`}
+                      >
+                        {size.replace(/["\[\]]/g, '')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color Selection */}
+              {fashionItem.Colors && fashionItem.Colors.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                  <div className="flex flex-wrap gap-3">
+                    {fashionItem.Colors.map((color) => {
+                      const colorValue = getColorValue(color);
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => setSelectedColor(color)}
+                          className={`w-10 h-10 rounded-full transition-transform hover:scale-110
+                            ${selectedColor === color 
+                              ? 'ring-2 ring-offset-2 ring-purple-600 transform scale-110' 
+                              : 'ring-1 ring-gray-300'
+                            }`}
+                          style={{ 
+                            backgroundColor: colorValue,
+                            boxShadow: selectedColor === color ? '0 0 0 2px white' : 'none'
+                          }}
+                          title={color}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                <div className="mt-2 flex items-center space-x-4">
+                  <button
+                    onClick={handleDecrease}
+                    className="p-2 border rounded-md hover:bg-gray-100"
+                  >
+                    -
+                  </button>
+                  <span className="text-lg font-medium">{quantity}</span>
+                  <button
+                    onClick={handleIncrease}
+                    className="p-2 border rounded-md hover:bg-gray-100"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Add to Cart Button */}
               <button
                 onClick={handleAddToCart}
-                className="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition duration-300"
+                className="w-full bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition-colors"
               >
                 Add to Cart
               </button>
-              <button className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition duration-300">
-                Buy Now
-              </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center text-gray-600">Product not found</div>
+        )}
 
-        {/* Recommended Items Section */}
-        <div className="w-full lg:w-5/6 mt-16 mb-14">
-          <h2
-            className="text-2xl font-semibold mb-4"
-            style={{ color: "#a98467" }}
-          >
-            Recommended for You
-          </h2>
-          <Slider {...settings}>
-            {inventories.map((item) => (
-              <ProductCard
-                key={item._id}
-                id={item._id}
-                img={item.imageUrls[0]}
-                name={item.ItemName}
-                price={item.UnitPrice}
-                discount={item.DiscountPrice || " "}
-              />
-            ))}
-          </Slider>
-        </div>
+        {/* Recommended Products */}
+        {inventories.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">You May Also Like</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {inventories.map((item) => (
+                <ProductCard
+                  key={item._id}
+                  id={item._id}
+                  img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : "/default-img.jpg"}
+                  name={item.ItemName}
+                  price={item.finalPrice || item.unitPrice}
+                  category={item.Category}
+                  brand={item.Brand}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <Footer />
-    </div>
+    </>
   );
 };
 
