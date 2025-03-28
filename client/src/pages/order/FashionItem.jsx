@@ -24,13 +24,97 @@ const FashionItem = () => {
   const [selectedColor, setSelectedColor] = useState("");
   const [inventories, setInventories] = useState([]);
 
+  // Parse arrays from server response
+  const parseSizes = (sizes) => {
+    if (!sizes) return [];
+    try {
+      // If it's already an array, clean and return it
+      if (Array.isArray(sizes)) {
+        return sizes.map(s => s.replace(/["\[\]]/g, '').trim());
+      }
+      // Try parsing as JSON
+      const parsed = JSON.parse(sizes);
+      if (Array.isArray(parsed)) {
+        return parsed.map(s => s.replace(/["\[\]]/g, '').trim());
+      }
+      // Split by comma if it's a string
+      return sizes
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    } catch {
+      return sizes
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+  };
+
+  const parseColors = (colors) => {
+    if (!colors) return [];
+    try {
+      // If it's already an array, clean and return it
+      if (Array.isArray(colors)) {
+        return colors.map(c => c.replace(/["\[\]]/g, '').trim());
+      }
+      // Try parsing as JSON
+      const parsed = JSON.parse(colors);
+      if (Array.isArray(parsed)) {
+        return parsed.map(c => c.replace(/["\[\]]/g, '').trim());
+      }
+      // Split by comma if it's a string
+      return colors
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(c => c.startsWith('#') || isValidColorName(c));
+    } catch {
+      return colors
+        .replace(/["\[\]]/g, '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(c => c.startsWith('#') || isValidColorName(c));
+    }
+  };
+
+  // Helper function to validate color names
+  const isValidColorName = (color) => {
+    const validColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'purple', 'orange',
+      'pink', 'brown', 'gray', 'navy', 'teal', 'maroon', 'olive'
+    ];
+    return validColors.includes(color.toLowerCase());
+  };
+
+  // Convert color name to hex
+  const getColorValue = (color) => {
+    if (color.startsWith('#')) return color;
+    
+    // Create a temporary element to convert color names to hex
+    const tempEl = document.createElement('div');
+    tempEl.style.color = color;
+    document.body.appendChild(tempEl);
+    const computedColor = window.getComputedStyle(tempEl).color;
+    document.body.removeChild(tempEl);
+    
+    // Convert rgb to hex
+    if (computedColor.startsWith('rgb')) {
+      const [r, g, b] = computedColor.match(/\d+/g);
+      return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`;
+    }
+    
+    return color;
+  };
+
   // Fetch item data from backend API
   useEffect(() => {
     const fetchItem = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching item with ID:', id); // Debug log
+        console.log('Fetching item with ID:', id);
         
         const response = await fetch(`${API_CONFIG.BASE_URL}/api/inventory/${id}`);
         if (!response.ok) {
@@ -38,15 +122,26 @@ const FashionItem = () => {
         }
         
         const data = await response.json();
-        console.log('Fetched item data:', data); // Debug log
+        console.log('Fetched item data:', data);
         
         if (!data) {
           throw new Error('No data received from server');
         }
+
+        // Parse sizes and colors
+        const parsedSizes = parseSizes(data.Sizes);
+        const parsedColors = parseColors(data.Colors);
         
-        setFashionItem(data);
-        setSelectedSize(data.Sizes?.[0] || "");
-        setSelectedColor(data.Colors?.[0] || "");
+        setFashionItem({
+          ...data,
+          Sizes: parsedSizes,
+          Colors: parsedColors
+        });
+        
+        // Set initial selections
+        setSelectedSize(parsedSizes[0] || "");
+        setSelectedColor(parsedColors[0] || "");
+        
       } catch (error) {
         console.error('Error fetching item:', error);
         setError(error.message);
@@ -110,8 +205,8 @@ const FashionItem = () => {
         userId: currentUser._id,
         itemId: id,
         title: fashionItem.ItemName,
-        img: fashionItem.imageUrls[0] || "",
-        price: fashionItem.UnitPrice,
+        img: fashionItem.image ? `${API_CONFIG.BASE_URL}/${fashionItem.image}` : "/default-img.jpg",
+        price: fashionItem.finalPrice || fashionItem.unitPrice,
         quantity,
         size: selectedSize,
         color: selectedColor,
@@ -133,8 +228,7 @@ const FashionItem = () => {
           window.location.href = "/cart";
         }
       });
-    // eslint-disable-next-line no-unused-vars
-    } catch (error) {
+    } catch {
       Swal.fire({
         title: "Error!",
         text: "An error occurred while adding the item to the cart. Please try again.",
@@ -143,10 +237,6 @@ const FashionItem = () => {
       });
     }
   };
-
-  // Handle size and color changes
-  const handleSizeChange = (e) => setSelectedSize(e.target.value);
-  const handleColorChange = (color) => setSelectedColor(color);
 
   // If there's an error, show it with a retry button
   if (error) {
@@ -221,39 +311,49 @@ const FashionItem = () => {
               {/* Size Selection */}
               {fashionItem.Sizes && fashionItem.Sizes.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Size</label>
-                  <select
-                    value={selectedSize}
-                    onChange={handleSizeChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md"
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Size</label>
+                  <div className="flex flex-wrap gap-2">
                     {fashionItem.Sizes.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors
+                          ${selectedSize === size
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          }`}
+                      >
+                        {size.replace(/["\[\]]/g, '')}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               )}
 
               {/* Color Selection */}
               {fashionItem.Colors && fashionItem.Colors.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Color</label>
-                  <div className="mt-2 flex space-x-2">
-                    {fashionItem.Colors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => handleColorChange(color)}
-                        className={`w-8 h-8 rounded-full border-2 ${
-                          selectedColor === color
-                            ? 'border-purple-500'
-                            : 'border-gray-300'
-                        }`}
-                        style={{ backgroundColor: color.toLowerCase() }}
-                        title={color}
-                      />
-                    ))}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                  <div className="flex flex-wrap gap-3">
+                    {fashionItem.Colors.map((color) => {
+                      const colorValue = getColorValue(color);
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => setSelectedColor(color)}
+                          className={`w-10 h-10 rounded-full transition-transform hover:scale-110
+                            ${selectedColor === color 
+                              ? 'ring-2 ring-offset-2 ring-purple-600 transform scale-110' 
+                              : 'ring-1 ring-gray-300'
+                            }`}
+                          style={{ 
+                            backgroundColor: colorValue,
+                            boxShadow: selectedColor === color ? '0 0 0 2px white' : 'none'
+                          }}
+                          title={color}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}
