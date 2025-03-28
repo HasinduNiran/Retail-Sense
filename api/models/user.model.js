@@ -10,6 +10,11 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   address: { type: String },
   mobile: { type: Number, required: true },
+  role: {
+    type: String,
+    enum: ["admin", "customer"],
+    default: "customer",
+  },
 });
 
 // Auto-increment plugin
