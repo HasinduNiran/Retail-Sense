@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import ProductCard from '../layouts/ProductCard';
 import { FaSpinner, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import API_CONFIG from '../config/apiConfig.js';
@@ -9,6 +11,7 @@ import "slick-carousel/slick/slick-theme.css";
 const Products = () => {
   const [inventories, setInventories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Custom arrows for the carousel
   const NextArrow = ({ onClick }) => (
@@ -20,6 +23,10 @@ const Products = () => {
     </button>
   );
 
+  NextArrow.propTypes = {
+    onClick: PropTypes.func
+  };
+
   const PrevArrow = ({ onClick }) => (
     <button 
       className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-all"
@@ -28,6 +35,10 @@ const Products = () => {
       <FaArrowLeft className="text-purple-800" />
     </button>
   );
+
+  PrevArrow.propTypes = {
+    onClick: PropTypes.func
+  };
 
   // Carousel settings
   const settings = {
@@ -88,6 +99,10 @@ const Products = () => {
     }
   };
 
+  const handleItemClick = (itemId) => {
+    navigate(`/item/${itemId}`);
+  };
+
   useEffect(() => {
     fetchInventories();
   }, []);
@@ -100,23 +115,25 @@ const Products = () => {
         </h2>
         <div className="relative px-8 md:px-12">
           {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <FaSpinner className="animate-spin text-4xl text-ExtraDarkColor" />
+            <div className="flex justify-center items-center h-64">
+              <FaSpinner className="animate-spin text-4xl text-purple-600" />
             </div>
           ) : inventories.length > 0 ? (
             <Slider {...settings}>
-              {inventories.map((inventory) => (
-                <div key={inventory._id} className="px-4 py-2">
-                  <ProductCard
-                    id={inventory._id}
-                    img={inventory.image ? `${API_CONFIG.BASE_URL}/${inventory.image}` : "/default-img.jpg"}
-                    name={inventory.ItemName}
-                    price={inventory.finalPrice || inventory.unitPrice}
-                    originalPrice={inventory.originalPrice || (inventory.finalPrice && inventory.unitPrice > inventory.finalPrice ? inventory.unitPrice : null)}
-                    category={inventory.Category}
-                    brand={inventory.Brand}
-                    quantity={inventory.Quantity || inventory.retrievedQuantity}
-                  />
+              {inventories.map((item) => (
+                <div key={item._id} className="px-4 py-2">
+                  <div onClick={() => handleItemClick(item._id)} className="cursor-pointer">
+                    <ProductCard
+                      id={item._id}
+                      img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : "/default-img.jpg"}
+                      name={item.ItemName}
+                      price={item.finalPrice || item.unitPrice}
+                      originalPrice={item.originalPrice || (item.finalPrice && item.unitPrice > item.finalPrice ? item.unitPrice : null)}
+                      category={item.Category}
+                      brand={item.Brand}
+                      quantity={item.Quantity || item.retrievedQuantity}
+                    />
+                  </div>
                 </div>
               ))}
             </Slider>

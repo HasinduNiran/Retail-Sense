@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowLeft, FiPlus, FiX } from "react-icons/fi";
@@ -42,10 +42,10 @@ function UpdateInventory() {
     try {
       const parsed = JSON.parse(sizes);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-      return sizes.split(/[,\/\[\]'"\\]/)
+    } catch {
+      return sizes.split(/[,/[\]'"\\]/)
         .map(s => s.trim().toUpperCase())
-        .filter(s => s);
+        .filter(Boolean);
     }
     return [];
   };
@@ -55,8 +55,8 @@ function UpdateInventory() {
     try {
       const parsed = JSON.parse(colors);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-      return colors.split(/[,\/\[\]'"\\]/)
+    } catch {
+      return colors.split(/[,/[\]'"\\]/)
         .map(c => c.trim().toUpperCase())
         .filter(c => /^#[0-9A-F]{6}$/i.test(c));
     }
@@ -68,46 +68,87 @@ function UpdateInventory() {
     const fetchInventory = async () => {
       setLoading(true);
       try {
-        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${id}`;
+        const url = `${API_CONFIG.BASE_URL}/api/inventory/${id}`;
+        console.log('Fetching inventory from:', url); // Debug log
+        
         const response = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
 
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Failed to fetch inventory item");
+        console.log('Server response:', result); // Debug log
+
+        if (!response.ok) {
+          throw new Error(result.details || result.message || 'Failed to fetch inventory item');
+        }
+
+        if (!result) {
+          throw new Error('No data received from server');
+        }
+
+        // Convert numeric strings to numbers
+        const numericFields = ['Quantity', 'reorderThreshold'];
+        numericFields.forEach(field => {
+          if (result[field]) {
+            result[field] = Number(result[field]);
+          }
+        });
 
         setFormData({
           ItemName: result.ItemName || '',
           Category: result.Category || '',
           Location: result.Location || '',
-          Quantity: result.Quantity || '',
+          Quantity: result.Quantity || 0,
           Brand: result.Brand || '',
           Sizes: parseSizes(result.Sizes),
           Colors: parseColors(result.Colors),
           Gender: result.Gender || '',
           Style: result.Style || '',
-          reorderThreshold: result.reorderThreshold || '',
+          reorderThreshold: result.reorderThreshold || 0,
           StockStatus: result.StockStatus || 'in-stock',
           SupplierName: result.SupplierName || '',
           SupplierContact: result.SupplierContact || '',
           image: null,
         });
+
         setImagePreview(result.image ? `${API_CONFIG.BASE_URL}/${result.image}` : null);
-      } catch (err) {
+      } catch {
+        console.error('Error fetching inventory'); // Debug log
         Swal.fire({
           icon: "error",
-          title: "Error!",
-          text: err.message,
-          confirmButtonColor: "#89198f",
+          title: "Error Loading Item",
+          text: 'Failed to fetch inventory item',
+          showConfirmButton: true,
+          confirmButtonText: 'Try Again',
+          showCancelButton: true,
+          cancelButtonText: 'Go Back'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetchInventory(); // Retry
+          } else {
+            navigate('/inventory-management'); // Go back
+          }
         });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInventory();
-  }, [id]);
+    if (id) {
+      fetchInventory();
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No item ID provided",
+        confirmButtonText: 'Go Back'
+      }).then(() => {
+        navigate('/inventory-management');
+      });
+      setLoading(false);
+    }
+  }, [id, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -124,10 +165,9 @@ function UpdateInventory() {
   };
 
   const handleAddSize = (e) => {
-    const newSize = e.target.value.trim().toUpperCase();
-    if (e.key === 'Enter' && newSize) {
-      e.preventDefault();
-      if (!formData.Sizes.includes(newSize)) {
+    if (e.key === 'Enter') {
+      const newSize = e.target.value.trim().toUpperCase();
+      if (newSize) {
         setFormData(prev => ({ ...prev, Sizes: [...prev.Sizes, newSize] }));
       }
       e.target.value = '';
@@ -179,9 +219,7 @@ function UpdateInventory() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     const requiredFields = [
       'ItemName', 'Category', 'Location', 'Quantity', 'Brand',
       'Gender', 'Style', 'reorderThreshold', 'SupplierName', 'SupplierContact',
@@ -221,14 +259,14 @@ function UpdateInventory() {
         }
       });
 
-      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/${id}`;
+      const url = `${API_CONFIG.BASE_URL}/api/inventory/${id}`;
       const response = await fetch(url, {
         method: "PUT",
         body: formDataToSend,
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Failed to update inventory item');
+      if (!response.ok) throw new Error(result.details || result.message || 'Failed to update inventory item');
 
       Swal.fire({
         icon: 'success',

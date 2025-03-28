@@ -2,6 +2,7 @@ import Inventory from '../models/inventory.model.js';
 import RetrievedInventory from '../models/retrievedInventory.model.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose'; // Import mongoose for ObjectId validation
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,10 +56,15 @@ export const createInventory = async (req, res) => {
         if (error.name === 'ValidationError') {
             return res.status(400).json({ 
                 message: 'Validation Error', 
-                errors: Object.values(error.errors).map(err => err.message)
+                errors: Object.values(error.errors).map(err => err.message),
+                details: `Error occurred while validating inventory data: ${error.message}`
             });
         }
-        res.status(500).json({ message: 'Failed to create inventory item', error: error.message });
+        res.status(500).json({ 
+            message: 'Failed to create inventory item', 
+            error: error.message,
+            details: `Error occurred while creating inventory item: ${error.message}`
+        });
     }
 };
 
@@ -68,7 +74,10 @@ export const sendToStore = async (req, res) => {
       const { unitPrice } = req.body;
   
       if (!unitPrice || isNaN(unitPrice)) {
-        return res.status(400).json({ message: 'Valid unit price required' });
+        return res.status(400).json({ 
+            message: 'Valid unit price required', 
+            details: `Invalid unit price: ${unitPrice}`
+        });
       }
 
       const parsedUnitPrice = parseFloat(unitPrice);
@@ -87,12 +96,19 @@ export const sendToStore = async (req, res) => {
       );
   
       if (!updatedItem) {
-        return res.status(404).json({ message: 'Item not found' });
+        return res.status(404).json({ 
+            message: 'Item not found', 
+            details: `No item found with ID: ${id}`
+        });
       }
   
       res.json(updatedItem);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      console.error('Error sending to store:', error);
+      res.status(500).json({ 
+          message: error.message, 
+          details: `Error occurred while sending to store: ${error.message}`
+      });
     }
   };
 
@@ -117,20 +133,54 @@ export const getAllInventory = async (req, res) => {
             pages: Math.ceil(total / limit)
         });
     } catch (error) {
-        res.status(500).json({ message: 'Failed to fetch inventory items', error: error.message });
+        console.error('Error getting all inventory:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch inventory items', 
+            error: error.message,
+            details: `Error occurred while fetching inventory items: ${error.message}`
+        });
     }
 };
 
 // Get inventory item by ID
 export const getInventoryById = async (req, res) => {
     try {
-        const inventory = await Inventory.findOne({ inventoryID: parseInt(req.params.id) });
-        if (!inventory) {
-            return res.status(404).json({ message: 'Inventory item not found' });
+        const { id } = req.params;
+        let inventory = null;
+
+        // First try to find by MongoDB _id
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            inventory = await Inventory.findById(id);
         }
+        
+        // If not found by _id, try inventoryID
+        if (!inventory) {
+            const numericId = parseInt(id);
+            if (!isNaN(numericId)) {
+                inventory = await Inventory.findOne({ inventoryID: numericId });
+            }
+        }
+        
+        // If still not found, check retrieved inventory
+        if (!inventory && mongoose.Types.ObjectId.isValid(id)) {
+            inventory = await RetrievedInventory.findById(id);
+        }
+
+        if (!inventory) {
+            return res.status(404).json({ 
+                message: 'Inventory item not found',
+                details: `No inventory found with ID: ${id}`
+            });
+        }
+
         res.json(inventory);
     } catch (error) {
-        res.status(500).json({ message: 'Failed to fetch inventory item', error: error.message });
+        console.error('Error in getInventoryById:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch inventory item', 
+            error: error.message,
+            details: `Error occurred while fetching inventory with ID: ${req.params.id}`
+        });
     }
 };
 
@@ -172,12 +222,20 @@ export const updateInventory = async (req, res) => {
         );
 
         if (!updatedInventory) {
-            return res.status(404).json({ message: 'Inventory item not found' });
+            return res.status(404).json({ 
+                message: 'Inventory item not found',
+                details: `No inventory found with ID: ${req.params.id}`
+            });
         }
 
         res.json(updatedInventory);
     } catch (error) {
-        res.status(400).json({ message: 'Failed to update inventory item', error: error.message });
+        console.error('Error updating inventory:', error);
+        res.status(400).json({ 
+            message: 'Failed to update inventory item', 
+            error: error.message,
+            details: `Error occurred while updating inventory item: ${error.message}`
+        });
     }
 };
 
@@ -189,12 +247,20 @@ export const deleteInventory = async (req, res) => {
         });
         
         if (!deletedInventory) {
-            return res.status(404).json({ message: 'Inventory item not found' });
+            return res.status(404).json({ 
+                message: 'Inventory item not found',
+                details: `No inventory found with ID: ${req.params.id}`
+            });
         }
 
         res.json({ message: 'Inventory item deleted successfully', inventoryID: deletedInventory.inventoryID });
     } catch (error) {
-        res.status(500).json({ message: 'Failed to delete inventory item', error: error.message });
+        console.error('Error deleting inventory:', error);
+        res.status(500).json({ 
+            message: 'Failed to delete inventory item', 
+            error: error.message,
+            details: `Error occurred while deleting inventory item: ${error.message}`
+        });
     }
 };
 
@@ -206,12 +272,20 @@ export const getInventoryByCategory = async (req, res) => {
         });
         
         if (!inventoryItems.length) {
-            return res.status(404).json({ message: 'No items found in this category' });
+            return res.status(404).json({ 
+                message: 'No items found in this category',
+                details: `No items found in category: ${req.params.category}`
+            });
         }
         
         res.json(inventoryItems);
     } catch (error) {
-        res.status(500).json({ message: 'Failed to fetch category items', error: error.message });
+        console.error('Error getting inventory by category:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch category items', 
+            error: error.message,
+            details: `Error occurred while fetching category items: ${error.message}`
+        });
     }
 };
 
@@ -224,7 +298,12 @@ export const getLowStockItems = async (req, res) => {
         
         res.json(lowStockItems);
     } catch (error) {
-        res.status(500).json({ message: 'Failed to fetch low stock items', error: error.message });
+        console.error('Error getting low stock items:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch low stock items', 
+            error: error.message,
+            details: `Error occurred while fetching low stock items: ${error.message}`
+        });
     }
 };
 
@@ -237,13 +316,19 @@ export const updateStockStatus = async (req, res) => {
         // Find the inventory item
         const inventoryItem = await Inventory.findOne({ inventoryID: parseInt(inventoryID) });
         if (!inventoryItem) {
-            return res.status(404).json({ message: 'Inventory item not found' });
+            return res.status(404).json({ 
+                message: 'Inventory item not found',
+                details: `No inventory found with ID: ${inventoryID}`
+            });
         }
 
         // Update quantity
         const newQuantity = parseInt(Quantity);
         if (isNaN(newQuantity) || newQuantity < 0) {
-            return res.status(400).json({ message: 'Invalid quantity' });
+            return res.status(400).json({ 
+                message: 'Invalid quantity', 
+                details: `Invalid quantity: ${Quantity}`
+            });
         }
 
         // If this is a retrieve action, save to RetrievedInventory
@@ -301,7 +386,10 @@ export const updateStockStatus = async (req, res) => {
         res.json(updatedInventory);
     } catch (error) {
         console.error('Error updating stock status:', error);
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ 
+            message: error.message, 
+            details: `Error occurred while updating stock status: ${error.message}`
+        });
     }
 };
 
@@ -313,7 +401,11 @@ export const getRetrievedInventory = async (req, res) => {
 
         res.json(retrievedItems);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Error getting retrieved inventory:', error);
+        res.status(500).json({ 
+            message: error.message, 
+            details: `Error occurred while getting retrieved inventory: ${error.message}`
+        });
     }
 };
 
@@ -325,7 +417,10 @@ export const deleteRetrievedInventory = async (req, res) => {
         // Find the retrieved item first to make sure it exists
         const retrievedItem = await RetrievedInventory.findById(id);
         if (!retrievedItem) {
-            return res.status(404).json({ message: 'Retrieved inventory item not found' });
+            return res.status(404).json({ 
+                message: 'Retrieved inventory item not found',
+                details: `No retrieved inventory found with ID: ${id}`
+            });
         }
 
         // Delete the retrieved item
@@ -334,7 +429,10 @@ export const deleteRetrievedInventory = async (req, res) => {
         res.json({ message: 'Retrieved inventory item deleted successfully' });
     } catch (error) {
         console.error('Error deleting retrieved inventory item:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ 
+            message: error.message, 
+            details: `Error occurred while deleting retrieved inventory item: ${error.message}`
+        });
     }
 };
 
@@ -347,12 +445,18 @@ export const updateRetrievedInventoryFinalPrice = async (req, res) => {
     console.log('Updating final price:', { id, finalPrice, body: req.body });
 
     if (finalPrice === undefined) {
-      return res.status(400).json({ message: 'Final price is required' });
+      return res.status(400).json({ 
+          message: 'Final price is required', 
+          details: `Final price is required for retrieved inventory item with ID: ${id}`
+      });
     }
 
     const parsedFinalPrice = parseFloat(finalPrice);
     if (isNaN(parsedFinalPrice)) {
-      return res.status(400).json({ message: 'Final price must be a valid number' });
+      return res.status(400).json({ 
+          message: 'Final price must be a valid number', 
+          details: `Invalid final price: ${finalPrice}`
+      });
     }
     
     // Ensure finalPrice is not negative
@@ -365,12 +469,18 @@ export const updateRetrievedInventoryFinalPrice = async (req, res) => {
     );
 
     if (!updatedItem) {
-      return res.status(404).json({ message: 'Retrieved inventory item not found' });
+      return res.status(404).json({ 
+          message: 'Retrieved inventory item not found',
+          details: `No retrieved inventory found with ID: ${id}`
+      });
     }
 
     res.json(updatedItem);
   } catch (error) {
     console.error('Error updating final price:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+        message: error.message, 
+        details: `Error occurred while updating final price: ${error.message}`
+    });
   }
 };
