@@ -9,6 +9,7 @@ const EditOrderPopup = ({ order, onClose, onUpdate }) => {
   const [customer, setCustomer] = useState(order.customerInfo || {});
   const [delivery, setDelivery] = useState(order.deliveryInfo || {});
   const [items, setItems] = useState(order.items || []);
+  const [status, setStatus] = useState(order.status || 'pending');
 
   const handleInputChange = (e, field, isCustomer = true) => {
     const { name, value } = e.target;
@@ -27,22 +28,23 @@ const EditOrderPopup = ({ order, onClose, onUpdate }) => {
 
   const handleUpdate = async () => {
     try {
+      // First update the order status
+      await axios.put(`/api/orders/update/${order._id}`, { status });
+
+      // Then update the full order details
       const updatedOrder = {
         ...order,
+        status,
         customerInfo: customer,
         deliveryInfo: delivery,
         items: items,
       };
 
-      const response = await axios.put(
-        `/api/order/update/${order._id}`,
-        updatedOrder
-      );
-
-      onUpdate(response.data);
+      onUpdate(updatedOrder);
       Swal.fire("Success", "Order updated successfully", "success");
     } catch (error) {
-      Swal.fire("Error", "Failed to update order", "error");
+      console.error("Error updating order:", error);
+      Swal.fire("Error", error.response?.data?.message || "Failed to update order", "error");
     }
   };
 
@@ -63,6 +65,21 @@ const EditOrderPopup = ({ order, onClose, onUpdate }) => {
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
+                <h3 className="font-semibold mb-2 text-darkColor">
+                  Order Status
+                </h3>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full p-3 border border-secondaryColor rounded mb-4"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+
                 <h3 className="font-semibold mb-2 text-darkColor">
                   Customer Information
                 </h3>

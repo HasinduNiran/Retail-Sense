@@ -5,6 +5,7 @@ import InventoryRoutes from './routes/inventory.routes.js';
 import UserRoutes from './routes/user.route.js';
 import FeedbackRoutes from './routes/feedback.routs.js';
 import authRoutes from './routes/auth.routs.js';
+import orderRoutes from './routes/order.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -54,6 +55,7 @@ app.use('/api/inventory', InventoryRoutes);
 app.use('/api/users', UserRoutes);
 app.use('/api/feedbacks', FeedbackRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

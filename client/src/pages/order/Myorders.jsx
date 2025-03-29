@@ -24,14 +24,15 @@ const MyOrders = () => {
   const [expandedOrders, setExpandedOrders] = useState({});
   const { currentUser } = useSelector((state) => state.user);
 
-  // Replace with dynamic userId
-
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!currentUser?._id) return;
+      
       try {
-        const response = await axios.get(`/api/order/get/${currentUser._id}`);
+        const response = await axios.get(`/api/orders/get/${currentUser._id}`);
         setOrders(response.data);
       } catch (error) {
+        console.error("Error fetching orders:", error);
         Swal.fire("Error", "Failed to fetch orders", "error");
       } finally {
         setLoading(false);
@@ -39,7 +40,7 @@ const MyOrders = () => {
     };
 
     fetchOrders();
-  }, [currentUser._id]);
+  }, [currentUser?._id]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -123,7 +124,7 @@ const MyOrders = () => {
 
                   {/* Default View */}
                   <div>
-                    <p className="text-gray-600">Status: {order.status}</p>
+                    <p className="text-gray-600">Status: {order.status.charAt(0).toUpperCase() + order.status.slice(1)}</p>
                     <p className="text-gray-600 mt-2">
                       Order Date:{" "}
                       {new Date(order.createdAt).toLocaleDateString()}
@@ -174,12 +175,16 @@ const MyOrders = () => {
                       <div className="w-full mt-10 mb-10 p-10">
                         <ProgressBar
                           percent={
-                            order.status === "Pending"
+                            order.status === "pending"
                               ? 0
-                              : order.status === "Shipped"
+                              : order.status === "processing"
+                              ? 25
+                              : order.status === "shipped"
                               ? 50
-                              : order.status === "Delivered"
+                              : order.status === "delivered"
                               ? 100
+                              : order.status === "cancelled"
+                              ? -1
                               : 0
                           }
                           filledBackground="linear-gradient(to right, #00A896, #028090)"
@@ -189,9 +194,7 @@ const MyOrders = () => {
                               <div className="flex flex-col items-center">
                                 <div
                                   className={`bg-gray-300 rounded-full h-14 w-14 flex justify-center items-center ${
-                                    accomplished
-                                      ? "bg-green-500"
-                                      : "bg-gray-300"
+                                    accomplished ? "bg-green-500" : order.status === "cancelled" ? "bg-red-500" : "bg-gray-300"
                                   }`}
                                 >
                                   <Lottie
@@ -209,9 +212,25 @@ const MyOrders = () => {
                               <div className="flex flex-col items-center">
                                 <div
                                   className={`bg-gray-300 rounded-full h-14 w-14 flex justify-center items-center ${
-                                    accomplished
-                                      ? "bg-green-500"
-                                      : "bg-gray-300"
+                                    accomplished ? "bg-green-500" : order.status === "cancelled" ? "bg-red-500" : "bg-gray-300"
+                                  }`}
+                                >
+                                  <Lottie
+                                    animationData={animationData}
+                                    loop={accomplished}
+                                    className="h-10 w-10"
+                                  />
+                                </div>
+                                <p className="mt-2 text-sm">Processing</p>
+                              </div>
+                            )}
+                          </Step>
+                          <Step>
+                            {({ accomplished }) => (
+                              <div className="flex flex-col items-center">
+                                <div
+                                  className={`bg-gray-300 rounded-full h-14 w-14 flex justify-center items-center ${
+                                    accomplished ? "bg-green-500" : order.status === "cancelled" ? "bg-red-500" : "bg-gray-300"
                                   }`}
                                 >
                                   <Lottie
@@ -229,9 +248,7 @@ const MyOrders = () => {
                               <div className="flex flex-col items-center">
                                 <div
                                   className={`bg-gray-300 rounded-full h-14 w-14 flex justify-center items-center ${
-                                    accomplished
-                                      ? "bg-green-500"
-                                      : "bg-gray-300"
+                                    accomplished ? "bg-green-500" : order.status === "cancelled" ? "bg-red-500" : "bg-gray-300"
                                   }`}
                                 >
                                   <Lottie
