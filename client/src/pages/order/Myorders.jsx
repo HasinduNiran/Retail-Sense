@@ -65,15 +65,23 @@ const MyOrders = () => {
     });
 
     if (result.isConfirmed) {
-      // Proceed with deletion if the user confirms
       try {
-        await axios.delete(`/api/order/delete/${orderId}`);
-        setOrders((prevOrders) =>
-          prevOrders.filter((order) => order._id !== orderId)
-        );
-        Swal.fire("Deleted!", "Your order has been deleted.", "success");
+        const response = await axios.delete(`/api/orders/delete/${orderId}`);
+        
+        if (response.data.success) {
+          // Remove the deleted order from state
+          setOrders((prevOrders) => prevOrders.filter((order) => order._id !== orderId));
+          Swal.fire("Deleted!", "Your order has been deleted.", "success");
+        } else {
+          throw new Error(response.data.message || "Failed to delete order");
+        }
       } catch (error) {
-        Swal.fire("Error", "Failed to delete order", "error");
+        console.error("Error deleting order:", error);
+        Swal.fire(
+          "Error",
+          error.response?.data?.message || "Failed to delete order",
+          "error"
+        );
       }
     }
   };

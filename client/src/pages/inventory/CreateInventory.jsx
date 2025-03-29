@@ -160,6 +160,7 @@ const CreateInventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     const requiredFields = [
       { field: 'ItemName', label: 'Item Name' },
@@ -251,7 +252,7 @@ const CreateInventory = () => {
         text: 'Inventory item created successfully!',
         confirmButtonColor: '#89198f',
       }).then(() => {
-        navigate('/inventory-management');
+        navigate('/manage/inventory-management');
       });
     } catch (error) {
       Swal.fire({
