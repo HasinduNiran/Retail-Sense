@@ -1,27 +1,116 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 
 const CustomizePage = () => {
   const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [generationId, setGenerationId] = useState(null);
+  const [error, setError] = useState(null);
+  const [statusMessage, setStatusMessage] = useState("");
 
   const samplePrompts = [
-    "A elegant red evening gown with lace details",
-    "Modern minimalist white wedding dress",
-    "Casual summer floral dress with ruffles",
-    "Vintage-inspired cocktail dress in navy blue"
+    "A casual red t-shirt with minimalist graphic design",
+    "Modern black t-shirt with geometric patterns",
+    "Summer cotton t-shirt with tropical print",
+    "Vintage-inspired band t-shirt in faded navy blue"
   ];
 
-  const handleGenerateDress = () => {
-    setIsLoading(true);
-    // Simulating API call - replace with actual AI image generation API
-    setTimeout(() => {
-      setGeneratedImage("/images/customize-dress.jpg");
+  // Leonardo AI API key - should be in an environment variable in production
+  const API_KEY =  "e5c50229-779c-4b33-b9b0-b5d013fb3318";
+
+  // Function to check generation status
+  const checkGenerationStatus = async (genId) => {
+    try {
+      const response = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${genId}`, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `Bearer ${API_KEY}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to check generation status');
+      }
+      
+      const data = await response.json();
+      
+      if (data.generations_by_pk.status === 'COMPLETE') {
+        // Generation is complete, get the first image URL
+        if (data.generations_by_pk.generated_images && data.generations_by_pk.generated_images.length > 0) {
+          setGeneratedImage(data.generations_by_pk.generated_images[0].url);
+          setIsLoading(false);
+          setStatusMessage("");
+        } else {
+          setError('No images were generated');
+          setIsLoading(false);
+        }
+      } else if (data.generations_by_pk.status === 'FAILED') {
+        setError('Image generation failed');
+        setIsLoading(false);
+      } else {
+        // Still processing, check again after a delay
+        setStatusMessage(`Status: ${data.generations_by_pk.status}...`);
+        setTimeout(() => checkGenerationStatus(genId), 3000);
+      }
+    } catch (err) {
+      setError(err.message);
       setIsLoading(false);
-    }, 2000);
+    }
   };
+
+  const handleGenerateDress = async () => {
+    setIsLoading(true);
+    setError(null);
+    setGeneratedImage("");
+    setStatusMessage("Initiating image generation...");
+    
+    try {
+      const response = await fetch('https://cloud.leonardo.ai/api/rest/v1/generations', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'authorization': `Bearer ${API_KEY}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          modelId: "6b645e3a-d64f-4341-a6d8-7a3690fbf042", // Fashion-oriented model ID
+          prompt: `T-shirt fashion design: ${prompt}. High quality professional t-shirt design with detailed fabric texture and stitching details.`,
+          num_images: 1,
+          width: 1024,
+          height: 1024,
+          ultra: true,
+          enhancePrompt: true
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to start image generation');
+      }
+      
+      const data = await response.json();
+      const generationId = data.sdGenerationJob.generationId;
+      setGenerationId(generationId);
+      setStatusMessage("Generation in progress. Please wait...");
+      
+      // Wait a few seconds before checking the status
+      setTimeout(() => checkGenerationStatus(generationId), 3000);
+      
+    } catch (err) {
+      setError(err.message);
+      setIsLoading(false);
+    }
+  };
+
+  // Cancel any ongoing polling if component unmounts
+  useEffect(() => {
+    return () => {
+      // This is a cleanup function
+      // Any pending timeouts will be cleared when component unmounts
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-PrimaryColor">
@@ -38,7 +127,7 @@ const CustomizePage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-DarkColor">Design Your Dream Dress</h1>
+            <h1 className="text-xl font-bold text-DarkColor">Design Your Dream T-Shirt</h1>
           </div>
         </motion.div>
 
@@ -50,7 +139,7 @@ const CustomizePage = () => {
             className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor"
           >
             <h2 className="text-2xl font-semibold text-DarkColor mb-4">
-              Describe Your Dress
+              Describe Your T-Shirt
             </h2>
             
             {/* Prompt Input */}
@@ -58,7 +147,7 @@ const CustomizePage = () => {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe your dream dress in detail... (e.g., style, color, fabric, length)"
+                placeholder="Describe your dream t-shirt in detail... (e.g., style, color, graphic design, fit)"
                 className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-SecondaryColor focus:border-transparent resize-none"
               />
               
@@ -111,14 +200,15 @@ const CustomizePage = () => {
               {isLoading ? (
                 <div className="flex flex-col items-center space-y-4">
                   <div className="w-12 h-12 border-4 border-SecondaryColor border-t-transparent rounded-full animate-spin" />
-                  <p className="text-gray-600">Creating your design...</p>
+                  <p className="text-gray-600">{statusMessage || "Creating your design..."}</p>
+                  {error && <p className="text-red-500">{error}</p>}
                 </div>
               ) : generatedImage ? (
                 <motion.img
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   src={generatedImage}
-                  alt="Generated dress design"
+                  alt="Generated t-shirt design"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -131,6 +221,7 @@ const CustomizePage = () => {
                   <p className="text-gray-500">
                     Your design preview will appear here
                   </p>
+                  {error && <p className="text-red-500 mt-2">{error}</p>}
                 </div>
               )}
             </div>

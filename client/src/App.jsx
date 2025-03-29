@@ -49,7 +49,7 @@ export default function App() {
         <Route path="/item/:id" element={<FashionItem />} />
 
         {/* Dashboard Route */}
-        <Route element={<PrivateAdmin />}>
+        <Route >
           <Route path="/manager/*" element={<DashboardLayout />} />
           <Route path="/update/:id" element={<UpdateInventory />} />
           <Route path="/update/:id" element={<DeleteInventory />} />
