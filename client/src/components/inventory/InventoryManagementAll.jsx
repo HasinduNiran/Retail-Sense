@@ -347,7 +347,7 @@ function InventoryManagementAll() {
     }
     
     // Save the PDF
-    doc.save('RetailSense-Inventory-Report.pdf');
+    doc.save('FashionNexus-Inventory-Report.pdf');
   };
 
   return (
