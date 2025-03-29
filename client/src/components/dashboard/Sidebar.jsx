@@ -60,11 +60,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       path: "/manager/discount-management",
       icon: <FaTags />,
     },
-    {
-      name: "Sales Forecasting",
-      path: "/manager/sales-forecasting",
-      icon: <FaChartLine />,
-    },
+    // {
+    //   name: "Sales Forecasting",
+    //   path: "/manager/sales-forecasting",
+    //   icon: <FaChartLine />,
+    // },
     { name: "Profile", path: "/manager/profile", icon: <FaUserCircle /> },
   ];
 

@@ -10,7 +10,7 @@ import UserManagement from "./UserManagement";
 import InventoryManagement from "./InventoryManagement";
 import OrderManagement from "./OrderManagement";
 import DiscountManagement from "./DiscountManagement";
-import SalesForecasting from "./SalesForcasting";
+// import SalesForecasting from "./SalesForcasting";
 import Profile from "./Profile";
 import CreateInventory from "../../pages/inventory/CreateInventory";
 import AddOffer from "../discount&offer/AddOffer";
@@ -60,7 +60,7 @@ export default function DashboardLayout() {
           />
           <Route path="/add-discount" element={<AddOffer />} />
           <Route path="/update-discount/:id" element={<UpdateOffer />} />
-          <Route path="/sales-forecasting" element={<SalesForecasting />} />
+          {/* <Route path="/sales-forecasting" element={<SalesForecasting />} /> */}
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </motion.main>
