@@ -51,7 +51,7 @@ export default function SignIn({ onClose, onSignUp }) {
       dispatch(signInSuccess(data));
       onClose(); // Close the popup on successful login
       
-      // Check role instead of ismanager
+      // If role is admin, navigate to manager page
       if (data.role === "admin") {
         navigate("/manager");
       } else {
