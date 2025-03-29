@@ -14,16 +14,13 @@ import {
   deleteUserFailure,
   deleteUserstart,
   deleteUserSuccess,
-  signOutUserstart,
-  signOutUserFailure,
-  signOutUserSuccess,
 } from "../redux/user/userSlice";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
-import { IoMdArrowRoundBack } from "react-icons/io";
 import { FaUserEdit, FaTrash, FaCheckCircle, FaSpinner } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import API_CONFIG from "../config/apiConfig.js";
 
 export default function Profile() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -35,6 +32,19 @@ export default function Profile() {
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const dispatch = useDispatch();
 
+  // Initialize form data with current user values
+  useEffect(() => {
+    if (currentUser) {
+      setFormData({
+        UserName: currentUser.UserName || '',
+        email: currentUser.email || '',
+        address: currentUser.address || '',
+        mobile: currentUser.mobile || ''
+      });
+    }
+  }, [currentUser]);
+
+  // Handle file upload if we want to add avatar functionality
   useEffect(() => {
     if (file) {
       handleFileUpload(file);
@@ -73,23 +83,32 @@ export default function Profile() {
     e.preventDefault();
     try {
       dispatch(updateUserstart());
-      const res = await fetch(`/api/user/update/${currentUser._id}`, {
-        method: "POST",
+      
+      // Create update object based on user model structure
+      const updateData = {
+        UserName: formData.UserName,
+        address: formData.address,
+        mobile: Number(formData.mobile) || 0
+      };
+      
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/users/${currentUser._id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updateData),
       });
 
       const data = await res.json();
-      if (data.success === false) {
+      if (!data.success) {
         dispatch(updateUserFailure(data.message));
         Swal.fire({
           icon: "error",
-          title: "Oops...",
-          text: `${error}`,
+          title: "Update Failed",
+          text: data.message || "Failed to update profile",
         });
         return;
       }
-      dispatch(updateUserSuccess(data));
+      
+      dispatch(updateUserSuccess(data.data));
       setUpdateSuccess(true);
       Swal.fire({
         position: "top-end",
@@ -102,8 +121,8 @@ export default function Profile() {
       dispatch(updateUserFailure(error.message));
       Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: `${error}`,
+        title: "Error",
+        text: error.message,
       });
     }
   };
@@ -121,11 +140,11 @@ export default function Profile() {
       if (result.isConfirmed) {
         try {
           dispatch(deleteUserstart());
-          const res = await fetch(`/api/user/delete/${currentUser._id}`, {
+          const res = await fetch(`${API_CONFIG.BASE_URL}/api/users/${currentUser._id}`, {
             method: "DELETE",
           });
           const data = await res.json();
-          if (data.success === false) {
+          if (!data.success) {
             dispatch(deleteUserFailure(data.message));
             return;
           }
@@ -151,7 +170,6 @@ export default function Profile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="flex-grow flex items-center justify-center p-6"
-        style={{ backgroundColor: "" }}
       >
         <div className="bg-SecondaryColor p-6 rounded-xl mt-20 shadow-xl max-w-lg w-full">
           <h1
@@ -161,70 +179,73 @@ export default function Profile() {
             Profile
           </h1>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-col items-center">
-              <input
-                onChange={(e) => setFile(e.target.files[0])}
-                type="file"
-                ref={fileRef}
-                hidden
-                accept="image/*"
-              />
-              <motion.img
-                src={formData.avatar || currentUser.avatar}
-                alt="profile"
-                className="rounded-full h-24 w-24 object-cover cursor-pointer mb-2"
-                onClick={() => fileRef.current.click()}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              />
-              <p className="text-sm">
-                {fileUploadError ? (
-                  <span className="text-red-600">Error uploading image</span>
-                ) : filePerc > 0 && filePerc < 100 ? (
-                  <span className="text-gray-600">{`Uploading ${filePerc}%`}</span>
-                ) : filePerc === 100 ? (
-                  <span className="text-green-600">Upload complete!</span>
-                ) : null}
-              </p>
-            </div>
+            {currentUser.avatar && (
+              <div className="flex flex-col items-center">
+                <input
+                  onChange={(e) => setFile(e.target.files[0])}
+                  type="file"
+                  ref={fileRef}
+                  hidden
+                  accept="image/*"
+                />
+                <motion.img
+                  src={formData.avatar || currentUser.avatar}
+                  alt="profile"
+                  className="rounded-full h-24 w-24 object-cover cursor-pointer mb-2"
+                  onClick={() => fileRef.current.click()}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                />
+                <p className="text-sm">
+                  {fileUploadError ? (
+                    <span className="text-red-600">Error uploading image</span>
+                  ) : filePerc > 0 && filePerc < 100 ? (
+                    <span className="text-gray-600">{`Uploading ${filePerc}%`}</span>
+                  ) : filePerc === 100 ? (
+                    <span className="text-green-600">Upload complete!</span>
+                  ) : null}
+                </p>
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                id="firstname"
-                placeholder="First Name"
-                className="border p-3 rounded-lg w-full"
-                defaultValue={currentUser.firstname}
-                onChange={handleChange}
-              />
+            <div className="space-y-4">
               <input
                 type="text"
-                id="lastname"
-                placeholder="Last Name"
+                id="UserName"
+                placeholder="Username"
                 className="border p-3 rounded-lg w-full"
-                defaultValue={currentUser.lastname}
+                value={formData.UserName || ""}
+                onChange={handleChange}
+              />
+
+              <input
+                type="email"
+                id="email"
+                placeholder="Email"
+                className="border p-3 rounded-lg w-full"
+                value={formData.email || ""}
+                onChange={handleChange}
+                readOnly={true}
+              />
+
+              <input
+                type="text"
+                id="address"
+                placeholder="Address"
+                className="border p-3 rounded-lg w-full"
+                value={formData.address || ""}
+                onChange={handleChange}
+              />
+
+              <input
+                type="number"
+                id="mobile"
+                placeholder="Mobile Number"
+                className="border p-3 rounded-lg w-full"
+                value={formData.mobile || ""}
                 onChange={handleChange}
               />
             </div>
-
-            <input
-              type="text"
-              id="username"
-              placeholder="Username"
-              className="border p-3 rounded-lg w-full"
-              defaultValue={currentUser.username}
-              onChange={handleChange}
-            />
-
-            <input
-              type="email"
-              id="email"
-              placeholder="Email"
-              className="border p-3 rounded-lg w-full"
-              defaultValue={currentUser.email}
-              onChange={handleChange}
-              readOnly={true}
-            />
 
             <button
               type="submit"
@@ -250,8 +271,7 @@ export default function Profile() {
 
             {updateSuccess && (
               <p className="text-center text-green-600">
-                <FaCheckCircle className="inline mr-1" /> Profile updated
-                successfully!
+                <FaCheckCircle className="inline mr-1" /> Profile updated successfully!
               </p>
             )}
 

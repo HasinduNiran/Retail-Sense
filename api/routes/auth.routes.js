@@ -3,7 +3,7 @@ import {
   google,
   signOut,
   signin,
-  signup,
+  signup
 } from "../controllers/auth.controllers.js";
 
 const router = express.Router();

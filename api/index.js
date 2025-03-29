@@ -4,6 +4,7 @@ import promotionRoutes from './routes/promotion.routes.js';
 import InventoryRoutes from './routes/inventory.routes.js';
 import UserRoutes from './routes/user.route.js';
 import FeedbackRoutes from './routes/feedback.routs.js';
+import authRoutes from './routes/auth.routs.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -51,7 +52,19 @@ ensureUploadsDir();
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/inventory', InventoryRoutes);
 app.use('/api/users', UserRoutes);
-app.use('/api/feedbacks',FeedbackRoutes);
+app.use('/api/feedbacks', FeedbackRoutes);
+app.use('/api/auth', authRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  return res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+  });
+});
 
 // MongoDB Connection
 const connectDB = async () => {

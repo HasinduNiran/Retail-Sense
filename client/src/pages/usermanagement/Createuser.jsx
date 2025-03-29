@@ -84,7 +84,7 @@ function CreateUser() {
         text: "User created successfully!",
         confirmButtonColor: "#89198f",
       }).then(() => {
-        navigate(`/user/${_id}`); // Adjust route as needed (e.g., user list page)
+        navigate("/users"); // Changed to redirect to users list
       });
     } catch (err) {
       Swal.fire({

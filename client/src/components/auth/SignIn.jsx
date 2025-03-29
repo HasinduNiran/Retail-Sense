@@ -10,6 +10,7 @@ import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaEnvelope, FaLock, FaTimes, FaGoogle } from "react-icons/fa";
 import OAuth from "./OAuth";
+import API_CONFIG from "../../config/apiConfig.js"; // Add this import
 
 export default function SignIn({ onClose, onSignUp }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -25,7 +26,7 @@ export default function SignIn({ onClose, onSignUp }) {
     e.preventDefault();
     try {
       dispatch(signInstart());
-      const res = await fetch("/api/auth/signin", {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/auth/signin`, { // Use API_CONFIG
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -49,7 +50,9 @@ export default function SignIn({ onClose, onSignUp }) {
 
       dispatch(signInSuccess(data));
       onClose(); // Close the popup on successful login
-      if (data.ismanager) {
+      
+      // Check role instead of ismanager
+      if (data.role === "admin") {
         navigate("/manager");
       } else {
         navigate("/");
