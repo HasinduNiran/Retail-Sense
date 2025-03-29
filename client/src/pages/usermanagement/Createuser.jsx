@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Import navigate
 import { motion } from "framer-motion";
 import { FiArrowLeft } from "react-icons/fi";
 import { MdPersonAdd } from "react-icons/md"; // Icon for user creation
@@ -9,7 +9,7 @@ import Swal from "sweetalert2";
 import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 
 function CreateUser() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Initialize navigate
   const [formData, setFormData] = useState({
     UserName: "",
     email: "",
@@ -84,7 +84,7 @@ function CreateUser() {
         text: "User created successfully!",
         confirmButtonColor: "#89198f",
       }).then(() => {
-        navigate("/users"); // Changed to redirect to users list
+        navigate("/"); // Navigate to home page after successful creation
       });
     } catch (err) {
       Swal.fire({

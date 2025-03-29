@@ -4,14 +4,11 @@ import feedback from '../models/feedback.model.js';
 
 export const createFeedback = async (req, res) => {
     try {
-        const { feedbackID, customerID, productID,orderID, rating, comment } = req.body;
+        const { userID, rating, comment } = req.body; // Change customerID to userID
         const newFeedback = new feedback({
-            feedbackID,
-            customerID,
-            productID,
-            orderID,
+            userID,  // Using userID instead of customerID
             rating,
-            comment
+            comment,
         });
         await newFeedback.save();
         res.status(201).json({ success: true, message: 'Feedback created successfully' });
@@ -20,6 +17,7 @@ export const createFeedback = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
 
 //Get all feedback
 
@@ -71,10 +69,10 @@ export const getFeedbackByProductID = async (req, res) => {
 // };
 export const updateFeedback = async (req, res) => {
     try {
-      const { customerID, productID,orderID, rating, comment } = req.body;
+      const { customerID, rating, comment } = req.body;
       const updateFeedback = await feedback.findByIdAndUpdate(
         req.params.id,
-        { customerID, productID,orderID, rating, comment },
+        { customerID, rating, comment },
         { new: true, runValidators: true }
       );
       if (!updateFeedback) {

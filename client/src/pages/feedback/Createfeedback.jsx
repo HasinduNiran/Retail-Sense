@@ -12,14 +12,14 @@ function CreateFeedback() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     userID: "",
-    productID: "",
+    // productID: "",
     rating: 0,
     comment: "",
-    orderID: "",
+    // orderID: "",
   });
   const [users, setUsers] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [products, setProducts] = useState([]);
+  // const [orders, setOrders] = useState([]);
+  // const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -36,17 +36,6 @@ function CreateFeedback() {
         if (!usersResponse.ok) throw new Error(usersResult.error || "Failed to fetch users");
         setUsers(usersResult.data);
 
-        // Fetch orders
-        const ordersResponse = await fetch(`${API_CONFIG.BASE_URL}/api/orders`); // Adjust endpoint
-        const ordersResult = await ordersResponse.json();
-        if (!ordersResponse.ok) throw new Error(ordersResult.error || "Failed to fetch orders");
-        setOrders(ordersResult.data);
-
-        // Fetch products
-        const productsResponse = await fetch(`${API_CONFIG.BASE_URL}/api/products`); // Adjust endpoint
-        const productsResult = await productsResponse.json();
-        if (!productsResponse.ok) throw new Error(productsResult.error || "Failed to fetch products");
-        setProducts(productsResult.data);
       } catch (err) {
         setError(err.message);
         Swal.fire({
@@ -93,11 +82,6 @@ function CreateFeedback() {
       return;
     }
 
-    if (!formData.productID) {
-      setError("Please select a Product ID");
-      setLoading(false);
-      return;
-    }
 
     if (formData.rating < 1 || formData.rating > 5) {
       setError("Please select a rating between 1 and 5 stars");
@@ -105,19 +89,14 @@ function CreateFeedback() {
       return;
     }
 
-    if (!formData.orderID) {
-      setError("Please select an Order ID");
-      setLoading(false);
-      return;
-    }
 
     try {
       const feedbackData = {
         userID: Number(formData.userID),
-        productID: formData.productID,
+        // productID: formData.productID,
         rating: String(formData.rating), // Convert to string to match schema
         comment: formData.comment || undefined,
-        orderID: formData.orderID,
+        // orderID: formData.orderID,
       };
 
       const url = `${API_CONFIG.BASE_URL}/api/feedbacks`;
@@ -141,7 +120,7 @@ function CreateFeedback() {
         text: "Feedback submitted successfully!",
         confirmButtonColor: "#89198f",
       }).then(() => {
-        navigate("/feedback");
+        navigate("/");
       });
     } catch (err) {
       Swal.fire({
@@ -216,7 +195,7 @@ function CreateFeedback() {
                 </select>
               </div>
 
-              {/* Product ID Dropdown */}
+              {/* Product ID Dropdown
               <div className="bg-PrimaryColor p-4 rounded-lg">
                 <label className="block text-DarkColor font-medium mb-2 flex items-center">
                   <BsBox className="mr-2" size={20} />
@@ -236,7 +215,7 @@ function CreateFeedback() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
               {/* Rating (Stars) */}
               <div className="bg-PrimaryColor p-4 rounded-lg">
@@ -274,7 +253,7 @@ function CreateFeedback() {
                 />
               </div>
 
-              {/* Order ID Dropdown */}
+              {/* Order ID Dropdown
               <div className="bg-PrimaryColor p-4 rounded-lg">
                 <label className="block text-DarkColor font-medium mb-2 flex items-center">
                   <BsHash className="mr-2" size={20} />
@@ -294,7 +273,7 @@ function CreateFeedback() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
               {/* Submit Button */}
               <button

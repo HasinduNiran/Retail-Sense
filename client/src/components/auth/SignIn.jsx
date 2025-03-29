@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Make sure to import useNavigate
 import { useDispatch, useSelector } from "react-redux";
 import {
   signInstart,
@@ -8,14 +8,14 @@ import {
 } from "../../redux/user/userSlice";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaEnvelope, FaLock, FaTimes, FaGoogle } from "react-icons/fa";
-import OAuth from "./OAuth";
+import { FaEnvelope, FaLock, FaTimes } from "react-icons/fa";
+import OAuth from "./OAuth"; // Assuming OAuth is implemented elsewhere
 import API_CONFIG from "../../config/apiConfig.js"; // Add this import
 
-export default function SignIn({ onClose, onSignUp }) {
+export default function SignIn({ onClose }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const { loading } = useSelector((state) => state.user);
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Initialize navigate
   const dispatch = useDispatch();
 
   const handleSignInChange = (e) => {
@@ -26,7 +26,7 @@ export default function SignIn({ onClose, onSignUp }) {
     e.preventDefault();
     try {
       dispatch(signInstart());
-      const res = await fetch(`${API_CONFIG.BASE_URL}/api/auth/signin`, { // Use API_CONFIG
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -50,12 +50,12 @@ export default function SignIn({ onClose, onSignUp }) {
 
       dispatch(signInSuccess(data));
       onClose(); // Close the popup on successful login
-      
+
       // If role is admin, navigate to manager page
       if (data.role === "admin") {
         navigate("/manager");
       } else {
-        navigate("/");
+        navigate("/"); // Navigate to home page for regular users
       }
 
       Swal.fire({
@@ -78,6 +78,11 @@ export default function SignIn({ onClose, onSignUp }) {
 
   const inputVariants = {
     focus: { scale: 1.02, transition: { type: "spring", stiffness: 300 } },
+  };
+
+  // Handle sign up click (Navigate to Create User page)
+  const handleSignUpClick = () => {
+    navigate("/adduser"); // Ensure you have a route like '/create-user'
   };
 
   return (
@@ -174,13 +179,13 @@ export default function SignIn({ onClose, onSignUp }) {
             <span className="border-b w-1/5 lg:w-1/4"></span>
           </div>
 
-          <OAuth />
+          <OAuth /> {/* Assuming OAuth component is implemented */}
 
           <p className="mt-6 text-sm text-center text-gray-600">
             Don't have an account?{" "}
             <motion.span
               className="text-DarkColor cursor-pointer hover:underline"
-              onClick={onSignUp}
+              onClick={handleSignUpClick} // Navigate to Create User page
               whileHover={{ scale: 1.05 }}
             >
               Sign Up

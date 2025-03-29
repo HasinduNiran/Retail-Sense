@@ -35,14 +35,15 @@ export default function OAuth() {
     }
   };
   return (
-    <motion.button
-      className="w-full mt-4 py-2 px-4 bg-red-600 text-white rounded-md font-semibold shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex items-center justify-center"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={handleGoogleClick}
-    >
-      <FaGoogle className="mr-2" />
-      Sign In with Google
-    </motion.button>
+    <div></div>
+    // <motion.button
+    //   className="w-full mt-4 py-2 px-4 bg-red-600 text-white rounded-md font-semibold shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex items-center justify-center"
+    //   whileHover={{ scale: 1.02 }}
+    //   whileTap={{ scale: 0.98 }}
+    //   onClick={handleGoogleClick}
+    // >
+    //   {/* <FaGoogle className="mr-2" /> */}
+      
+    // </motion.button>
   );
 }
