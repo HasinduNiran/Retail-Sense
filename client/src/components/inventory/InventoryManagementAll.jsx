@@ -264,7 +264,7 @@ function InventoryManagementAll() {
     const pageWidth = doc.internal.pageSize.width;
     
     // Add title and header
-    const title = "Retail Sense - Inventory Report";
+    const title = "Fashion Nexus - Inventory Report";
     const date = new Date().toLocaleDateString();
     const time = new Date().toLocaleTimeString();
     
