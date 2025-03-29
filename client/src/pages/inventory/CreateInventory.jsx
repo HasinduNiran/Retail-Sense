@@ -551,7 +551,7 @@ const CreateInventory = () => {
                 onBlur={handleInputBlur}
                 min="0"
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
-                placeholder="e.g., 10"
+                placeholder="min 100"
                 required
               />
             </div>
@@ -579,7 +579,7 @@ const CreateInventory = () => {
                 onChange={handleInputChange}
                 onBlur={handleInputBlur}
                 className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-DarkColor focus:ring-2 focus:ring-SecondaryColor"
-                placeholder="e.g., +1 123-456-7890"
+                placeholder="e.g., abcdef@email.com"
                 required
               />
             </div>
