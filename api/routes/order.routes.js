@@ -119,6 +119,21 @@ router.get('/get/:userId', async (req, res) => {
   }
 });
 
+// Get all orders
+router.get('/', async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching orders',
+      error: error.message
+    });
+  }
+});
+
 // Update order status
 router.put('/update/:orderId', async (req, res) => {
   try {

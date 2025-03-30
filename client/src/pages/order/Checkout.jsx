@@ -7,9 +7,7 @@ import Footer from "../../components/Footer";
 import { FaCcMastercard } from "react-icons/fa";
 import { FaCcVisa } from "react-icons/fa";
 import { SiAmericanexpress } from "react-icons/si";
-// import generateBill from "../components/GenarateBill";
 
-// Configure axios base URL
 axios.defaults.baseURL = 'http://localhost:3000';
 
 const Checkout = () => {
@@ -35,19 +33,16 @@ const Checkout = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Helper function to handle input changes for customer info
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCustomerInfo((prevState) => ({ ...prevState, [name]: value }));
   };
 
-  // Helper function to handle input changes for delivery info
   const handleDeliveryChange = (e) => {
     const { name, value } = e.target;
     setDeliveryInfo((prevState) => ({ ...prevState, [name]: value }));
   };
 
-  // Helper function to handle input changes for card info
   const handleCardChange = (e) => {
     const { name, value } = e.target;
     if (name === 'expiryDate') {
@@ -67,121 +62,94 @@ const Checkout = () => {
   };
 
   const getCardType = (cardNumber) => {
-    const sanitizedCardNumber = cardNumber.replace(/\D/g, ""); // Remove non-numeric characters
-
-    // Mastercard: 51-55 or 2221-2720
-    if (
-      /^(5[1-5]\d{0,14}|2(2[2-9]\d{0,2}|[3-6]\d{0,3}|7[01]\d{0,2}|720\d{0,1}))$/.test(
-        sanitizedCardNumber
-      )
-    ) {
+    const sanitizedCardNumber = cardNumber.replace(/\D/g, "");
+    if (/^(5[1-5]\d{0,14}|2(2[2-9]\d{0,2}|[3-6]\d{0,3}|7[01]\d{0,2}|720\d{0,1}))$/.test(sanitizedCardNumber)) {
       return "Mastercard";
     }
-
-    // Visa: starts with 4
     if (/^4\d{0,15}$/.test(sanitizedCardNumber)) {
       return "Visa";
     }
-
-    // American Express: starts with 34 or 37
     if (/^3[47]\d{0,13}$/.test(sanitizedCardNumber)) {
       return "American Express";
     }
-
-    return false; // No matching card type
+    return false;
   };
 
-  // Function to validate form inputs
   const validateForm = () => {
-    const phoneRegex = /^0\d{9}$/; // Phone number must start with 0 and be 10 digits
-    const nameRegex = /^[A-Za-z\s]+$/; // Name can only contain letters and spaces
-    const postalCodeRegex = /^\d{5}$/; // Postal code must be exactly 5 digits
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email format validation
+    const phoneRegex = /^0\d{9}$/;
+    const nameRegex = /^[A-Za-z\s]+$/;
+    const postalCodeRegex = /^\d{5}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!customerInfo.name || !customerInfo.email || !customerInfo.mobile) {
-      Swal.fire(
-        "Validation Error",
-        "Please fill in all customer details.",
-        "error"
-      );
-      return false;
+    // Check for empty customer info fields
+    for (const [key, value] of Object.entries(customerInfo)) {
+      if (!value.trim()) {
+        Swal.fire("Validation Error", `Customer ${key} is required.`, "error");
+        return false;
+      }
     }
 
-    // Validate name (only letters and spaces)
     if (!nameRegex.test(customerInfo.name)) {
-      Swal.fire(
-        "Validation Error",
-        "Customer name cannot contain numbers or special characters.",
-        "error"
-      );
+      Swal.fire("Validation Error", "Customer name cannot contain numbers or special characters.", "error");
       return false;
     }
 
-    // Validate email format
     if (!emailRegex.test(customerInfo.email)) {
-      Swal.fire(
-        "Validation Error",
-        "Please enter a valid email address.",
-        "error"
-      );
+      Swal.fire("Validation Error", "Please enter a valid email address.", "error");
       return false;
     }
 
-    // Validate phone number
     if (!phoneRegex.test(customerInfo.mobile)) {
-      Swal.fire(
-        "Validation Error",
-        "Mobile number should start with 0 and be 10 digits long.",
-        "error"
-      );
+      Swal.fire("Validation Error", "Mobile number should start with 0 and be 10 digits long.", "error");
       return false;
     }
 
-    if (
-      !deliveryInfo.address ||
-      !deliveryInfo.city ||
-      !deliveryInfo.postalCode
-    ) {
-      Swal.fire(
-        "Validation Error",
-        "Please fill in all delivery details.",
-        "error"
-      );
-      return false;
+    // Check for empty delivery info fields
+    for (const [key, value] of Object.entries(deliveryInfo)) {
+      if (!value.trim()) {
+        Swal.fire("Validation Error", `Delivery ${key} is required.`, "error");
+        return false;
+      }
     }
 
-    // Validate postal code (exactly 5 digits)
     if (!postalCodeRegex.test(deliveryInfo.postalCode)) {
-      Swal.fire(
-        "Validation Error",
-        "Postal code must be exactly 5 digits long.",
-        "error"
-      );
+      Swal.fire("Validation Error", "Postal code must be exactly 5 digits long.", "error");
       return false;
     }
 
-    if (
-      paymentMethod === "Card" &&
-      (!cardInfo.cardNumber || !cardInfo.expiryDate || !cardInfo.cvv)
-    ) {
-      Swal.fire(
-        "Validation Error",
-        "Please fill in all card details.",
-        "error"
-      );
-      return false;
+    if (paymentMethod === "Card") {
+      // Check for empty card info fields
+      for (const [key, value] of Object.entries(cardInfo)) {
+        if (!value.trim()) {
+          Swal.fire("Validation Error", `Card ${key} is required.`, "error");
+          return false;
+        }
+      }
+
+      if (!getCardType(cardInfo.cardNumber)) {
+        Swal.fire("Validation Error", "Please enter a valid card number.", "error");
+        return false;
+      }
+
+      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardInfo.expiryDate)) {
+        Swal.fire("Validation Error", "Please enter a valid expiry date (MM/YY).", "error");
+        return false;
+      }
+
+      if (!/^\d{3}$/.test(cardInfo.cvv)) {
+        Swal.fire("Validation Error", "Please enter a valid 3-digit CVV.", "error");
+        return false;
+      }
     }
 
     return true;
   };
 
-  // Function to handle order placement
   const handlePlaceOrder = async () => {
     if (!validateForm()) return;
 
     setLoading(true);
     
-    // Transform items array to match the schema
     const transformedItems = items.map(item => ({
       itemId: item.itemId,
       quantity: item.quantity || 1,
@@ -204,15 +172,10 @@ const Checkout = () => {
 
     try {
       console.log("Sending order data:", orderData);
-
       const response = await axios.post("/api/orders/add", orderData);
       localStorage.removeItem("cart");
       setLoading(false);
-      Swal.fire(
-        "Success",
-        `Order placed successfully! Order ID: ${response.data.orderId}`,
-        "success"
-      ).then(() => {
+      Swal.fire("Success", `Order placed successfully! Order ID: ${response.data.orderId}`, "success").then(() => {
         navigate("/my-orders");
       });
     } catch (error) {
@@ -222,11 +185,7 @@ const Checkout = () => {
         status: error.response?.status,
         orderData: orderData
       });
-      Swal.fire(
-        "Error",
-        error.response?.data?.error?.[0] || error.response?.data?.message || "Failed to place order. Please try again.",
-        "error"
-      );
+      Swal.fire("Error", error.response?.data?.error?.[0] || error.response?.data?.message || "Failed to place order. Please try again.", "error");
     }
   };
 
@@ -235,34 +194,18 @@ const Checkout = () => {
       <Navbar />
       <div className="min-h-screen p-8 flex flex-col items-center">
         <div className="w-full lg:w-3/4 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-10 mt-20">
-          {/* Left Side: Order Summary */}
           <div className="w-full lg:w-1/2 space-y-6">
             <h1 className="text-3xl font-semibold mb-4">Order Summary</h1>
             {items && items.length > 0 ? (
               items.map((item) => (
-                <div
-                  key={item.itemId}
-                  className="flex justify-between items-center p-4 border-b"
-                >
+                <div key={item.itemId} className="flex justify-between items-center p-4 border-b">
                   <div className="flex gap-2 items-center">
-                    <img
-                      src={item.img}
-                      alt={item.title}
-                      className="w-16 h-16 object-cover rounded"
-                    />
+                    <img src={item.img} alt={item.title} className="w-16 h-16 object-cover rounded" />
                     <div className="flex flex-col">
                       <span className="font-medium">{item.title}</span>
-                      <span className="text-gray-500">
-                        Color:{" "}
-                        <button
-                          style={{ backgroundColor: item.color }}
-                          className="w-5 h-5 rounded-full border-2 "
-                        />{" "}
-                        Size: {item.size}
-                      </span>
+                      <span className="text-gray-500">Color: <button style={{ backgroundColor: item.color }} className="w-5 h-5 rounded-full border-2 " /> Size: {item.size}</span>
                     </div>
                   </div>
-
                   <span> Qty: {item.quantity}</span>
                   <span>${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
@@ -274,136 +217,120 @@ const Checkout = () => {
               <span>Subtotal:</span>
               <span>${total?.toFixed(2) || 0}</span>
             </div>
-            {/* Back to Cart Button */}
-            <button
-              onClick={() => navigate("/cart")}
-              className="mt-4 w-full bg-gray-300 text-black py-2 rounded-full hover:bg-gray-400 transition duration-300"
-            >
+            <button onClick={() => navigate("/cart")} className="mt-4 w-full bg-gray-300 text-black py-2 rounded-full hover:bg-gray-400 transition duration-300">
               Back to Cart
             </button>
           </div>
 
-          {/* Right Side: Customer Information Form */}
           <div className="w-full lg:w-1/2 p-6 bg-gray-100 rounded-lg space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">
-              Customer Information
-            </h2>
-            <input
-              type="text"
-              name="name"
-              placeholder="Name"
-              value={customerInfo.name}
-              onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (
-                  !/^[a-zA-Z\s]$/.test(e.key) &&
-                  e.key !== "Backspace" &&
-                  e.key !== "Tab"
-                ) {
-                  e.preventDefault();
-                }
-              }}
-              className="w-full p-2 border rounded"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={customerInfo.email}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded"
-            />
-            {!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) &&
-              customerInfo.email && (
-                <p className="text-red-500 text-xs mt-1">
-                  Please enter a valid email address.
-                </p>
-              )}
-            <input
-              type="text"
-              name="mobile"
-              placeholder="Mobile No."
-              value={customerInfo.mobile}
-              onChange={handleInputChange}
-              maxLength={10}
-              onKeyDown={(e) => {
-                if (
-                  !/^\d$/.test(e.key) && // Only allow digits (0-9)
-                  e.key !== "Backspace" && // Allow Backspace
-                  e.key !== "Tab" // Allow Tab
-                ) {
-                  e.preventDefault(); // Prevent default action if key is not allowed
-                }
-              }}
-              className="w-full p-2 border rounded"
-            />
-            {!/^0\d{9}$/.test(customerInfo.mobile) && customerInfo.mobile && (
-              <p className="text-red-500 text-xs mt-1">
-                Please enter a valid mobile number starting with 0 and 10 digits long.
-              </p>
-            )}
-
-            {/* Delivery Info Section (Only if Deliver is selected) */}
-
-            <>
-              <h2 className="text-xl font-semibold mt-4 mb-2">
-                Delivery Information
-              </h2>
+            <h2 className="text-2xl font-semibold mb-4">Customer Information</h2>
+            <div>
               <input
                 type="text"
-                name="address"
-                placeholder="Address"
-                value={deliveryInfo.address}
-                onChange={handleDeliveryChange}
-                className="w-full p-2 border rounded"
-              />
-              <input
-                type="text"
-                name="city"
-                placeholder="City"
-                value={deliveryInfo.city}
-                onChange={handleDeliveryChange}
+                name="name"
+                placeholder="Name *"
+                value={customerInfo.name}
+                onChange={handleInputChange}
                 onKeyDown={(e) => {
-                  if (
-                    !/^[a-zA-Z\s]$/.test(e.key) &&
-                    e.key !== "Backspace" &&
-                    e.key !== "Tab"
-                  ) {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
                     e.preventDefault();
                   }
                 }}
                 className="w-full p-2 border rounded"
+                required
               />
+              {!customerInfo.name && <p className="text-red-500 text-xs mt-1">Name is required</p>}
+            </div>
+            <div>
+              <input
+                type="email"
+                name="email"
+                placeholder="Email *"
+                value={customerInfo.email}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded"
+                required
+              />
+              {!customerInfo.email && <p className="text-red-500 text-xs mt-1">Email is required</p>}
+              {!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) && customerInfo.email && (
+                <p className="text-red-500 text-xs mt-1">Please enter a valid email address.</p>
+              )}
+            </div>
+            <div>
+              <input
+                type="text"
+                name="mobile"
+                placeholder="Mobile No. *"
+                value={customerInfo.mobile}
+                onChange={handleInputChange}
+                maxLength={10}
+                onKeyDown={(e) => {
+                  if (!/^\d$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-full p-2 border rounded"
+                required
+              />
+              {!customerInfo.mobile && <p className="text-red-500 text-xs mt-1">Mobile number is required</p>}
+              {!/^0\d{9}$/.test(customerInfo.mobile) && customerInfo.mobile && (
+                <p className="text-red-500 text-xs mt-1">Please enter a valid mobile number starting with 0 and 10 digits long.</p>
+              )}
+            </div>
+
+            <h2 className="text-xl font-semibold mt-4 mb-2">Delivery Information</h2>
+            <div>
+              <input
+                type="text"
+                name="address"
+                placeholder="Address *"
+                value={deliveryInfo.address}
+                onChange={handleDeliveryChange}
+                className="w-full p-2 border rounded"
+                required
+              />
+              {!deliveryInfo.address && <p className="text-red-500 text-xs mt-1">Address is required</p>}
+            </div>
+            <div>
+              <input
+                type="text"
+                name="city"
+                placeholder="City *"
+                value={deliveryInfo.city}
+                onChange={handleDeliveryChange}
+                onKeyDown={(e) => {
+                  if (!/^[a-zA-Z\s]$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-full p-2 border rounded"
+                required
+              />
+              {!deliveryInfo.city && <p className="text-red-500 text-xs mt-1">City is required</p>}
+            </div>
+            <div>
               <input
                 type="text"
                 name="postalCode"
-                placeholder="Postal Code"
+                placeholder="Postal Code *"
                 value={deliveryInfo.postalCode}
                 onChange={handleDeliveryChange}
                 onKeyDown={(e) => {
-                  if (
-                    !/^\d$/.test(e.key) && // Only allow digits (0-9)
-                    e.key !== "Backspace" && // Allow Backspace
-                    e.key !== "Tab" // Allow Tab
-                  ) {
-                    e.preventDefault(); // Prevent default action if key is not allowed
+                  if (!/^\d$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+                    e.preventDefault();
                   }
                 }}
                 maxLength={5}
                 className="w-full p-2 border rounded"
+                required
               />
-              {!/^\d{5}$/.test(deliveryInfo.postalCode) &&
-                deliveryInfo.postalCode && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Please enter a valid postal code (5 digits).
-                  </p>
-                )}
-            </>
+              {!deliveryInfo.postalCode && <p className="text-red-500 text-xs mt-1">Postal code is required</p>}
+              {!/^\d{5}$/.test(deliveryInfo.postalCode) && deliveryInfo.postalCode && (
+                <p className="text-red-500 text-xs mt-1">Please enter a valid postal code (5 digits).</p>
+              )}
+            </div>
 
-            {/* Payment Info Section */}
-            <h2 className="text-xl font-semibold mt-4 mb-2">
-              Payment Information
-            </h2>
+            <h2 className="text-xl font-semibold mt-4 mb-2">Payment Information</h2>
             <select
               name="paymentMethod"
               value={paymentMethod}
@@ -414,97 +341,81 @@ const Checkout = () => {
               <option value="Card">Card</option>
             </select>
 
-            {/* Card Info Section (Only if Card is selected) */}
             {paymentMethod === "Card" && (
               <>
-                <div className="flex">
+                <div>
+                  <div className="flex">
+                    <input
+                      type="text"
+                      name="cardNumber"
+                      placeholder="Card Number *"
+                      value={cardInfo.cardNumber}
+                      onChange={handleCardChange}
+                      maxLength={16}
+                      onKeyDown={(e) => {
+                        if (!/^\d$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="w-full p-2 border rounded"
+                      required
+                    />
+                    <i className="text-3xl ml-5 mt-1">
+                      {getCardType(cardInfo.cardNumber) === "Mastercard" && <FaCcMastercard />}
+                      {getCardType(cardInfo.cardNumber) === "Visa" && <FaCcVisa />}
+                      {getCardType(cardInfo.cardNumber) === "American Express" && <SiAmericanexpress />}
+                    </i>
+                  </div>
+                  {!cardInfo.cardNumber && <p className="text-red-500 text-xs mt-1">Card number is required</p>}
+                  {!getCardType(cardInfo.cardNumber) && cardInfo.cardNumber && (
+                    <p className="text-red-500 text-xs mt-1">Please enter a valid card number.</p>
+                  )}
+                </div>
+                <div>
                   <input
                     type="text"
-                    name="cardNumber"
-                    placeholder="Card Number"
-                    value={cardInfo.cardNumber}
+                    name="expiryDate"
+                    placeholder="Expiry Date (MM/YY) *"
+                    value={cardInfo.expiryDate}
                     onChange={handleCardChange}
-                    maxLength={16}
+                    maxLength={5}
                     onKeyDown={(e) => {
-                      if (
-                        !/^\d$/.test(e.key) && // Only allow digits (0-9)
-                        e.key !== "Backspace" && // Allow Backspace
-                        e.key !== "Tab" // Allow Tab
-                      ) {
-                        e.preventDefault(); // Prevent default action if key is not allowed
+                      if (!/^\d$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Tab') {
+                        e.preventDefault();
                       }
                     }}
                     className="w-full p-2 border rounded"
+                    required
                   />
-                  <i className="text-3xl ml-5 mt-1">
-                    {getCardType(cardInfo.cardNumber) === "Mastercard" && (
-                      <FaCcMastercard />
-                    )}
-                    {getCardType(cardInfo.cardNumber) === "Visa" && (
-                      <FaCcVisa />
-                    )}
-                    {getCardType(cardInfo.cardNumber) === "American Express" && (
-                      <SiAmericanexpress />
-                    )}
-                  </i>
-                </div>
-                {!getCardType(cardInfo.cardNumber) && cardInfo.cardNumber && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Please enter a valid card number.
-                  </p>
-                )}
-
-                <input
-                  type="text"
-                  name="expiryDate"
-                  placeholder="Expiry Date (MM/YY)"
-                  value={cardInfo.expiryDate}
-                  onChange={handleCardChange}
-                  maxLength={5}
-                  onKeyDown={(e) => {
-                    if (
-                      !/^\d$/.test(e.key) &&
-                      e.key !== 'Backspace' &&
-                      e.key !== 'Tab'
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="w-full p-2 border rounded"
-                />
-                {!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardInfo.expiryDate) &&
-                  cardInfo.expiryDate && (
-                    <p className="text-red-500 text-xs mt-1">
-                      Please enter a valid expiry date (MM/YY)
-                    </p>
+                  {!cardInfo.expiryDate && <p className="text-red-500 text-xs mt-1">Expiry date is required</p>}
+                  {!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardInfo.expiryDate) && cardInfo.expiryDate && (
+                    <p className="text-red-500 text-xs mt-1">Please enter a valid expiry date (MM/YY)</p>
                   )}
-                <input
-                  type="password"
-                  name="cvv"
-                  placeholder="CVV"
-                  value={cardInfo.cvv}
-                  maxLength={3}
-                  onKeyDown={(e) => {
-                    if (
-                      !/^\d$/.test(e.key) &&
-                      e.key !== "Backspace" &&
-                      e.key !== "Tab"
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={handleCardChange}
-                  className="w-full p-2 border rounded"
-                />
-                {!/^\d{3}$/.test(cardInfo.cvv) && cardInfo.cvv && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Please enter a valid 3-digit CVV
-                  </p>
-                )}
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    name="cvv"
+                    placeholder="CVV *"
+                    value={cardInfo.cvv}
+                    maxLength={3}
+                    onKeyDown={(e) => {
+                      if (!/^\d$/.test(e.key) && e.key !== "Backspace" && e.key !== "Tab") {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={handleCardChange}
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                  {!cardInfo.cvv && <p className="text-red-500 text-xs mt-1">CVV is required</p>}
+                  {!/^\d{3}$/.test(cardInfo.cvv) && cardInfo.cvv && (
+                    <p className="text-red-500 text-xs mt-1">Please enter a valid 3-digit CVV</p>
+                  )}
+                </div>
               </>
             )}
 
-            {/* Place Order Button */}
             <button
               onClick={handlePlaceOrder}
               className="mt-6 w-full bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition duration-300"

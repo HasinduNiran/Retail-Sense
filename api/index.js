@@ -53,7 +53,7 @@ ensureUploadsDir();
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/inventory', InventoryRoutes);
 app.use('/api/users', UserRoutes);
-app.use('/api/feedbacks', FeedbackRoutes);
+app.use('/api/feedback', FeedbackRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 
