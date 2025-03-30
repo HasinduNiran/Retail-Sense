@@ -1,12 +1,21 @@
+// React and Router imports
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
+// UI Framework imports
 import { motion } from "framer-motion";
-import { FiArrowLeft, FiEdit, FiTrash2, FiPackage } from "react-icons/fi";
-import { MdAdd, MdInventory, MdFileDownload } from "react-icons/md";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
+
+// Icons
+import { FiArrowLeft, FiEdit, FiTrash2, FiPackage, FiX } from "react-icons/fi";
+import { MdAdd, MdInventory, MdFileDownload } from "react-icons/md";
+
+// PDF Generation
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+
+// Local imports
 import API_CONFIG from "../../config/apiConfig.js";
 import axios from 'axios';
 import InventoryQuantityModal from "./InventoryQuantityModal";
@@ -21,6 +30,24 @@ function InventoryManagementAll() {
   const limit = 10;
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredItems, setFilteredItems] = useState([]);
+
+  // Search and filter logic
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredItems(inventoryItems);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = inventoryItems.filter(item => 
+        item.ItemName?.toLowerCase().includes(query) ||
+        item.Category?.toLowerCase().includes(query) ||
+        item.Brand?.toLowerCase().includes(query) ||
+        item.Style?.toLowerCase().includes(query)
+      );
+      setFilteredItems(filtered);
+    }
+  }, [searchQuery, inventoryItems]);
 
   // Size rendering logic
   const renderSizes = (sizes) => {
@@ -374,6 +401,23 @@ function InventoryManagementAll() {
             </h1>
           </div>
           <div className="flex gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64 px-4 py-2 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FiX size={16} />
+                </button>
+              )}
+            </div>
             <button
               onClick={generatePDF}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -426,8 +470,8 @@ function InventoryManagementAll() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.isArray(inventoryItems) && inventoryItems.length > 0 ? (
-                    inventoryItems.map((item) => (
+                  {Array.isArray(filteredItems) && filteredItems.length > 0 ? (
+                    filteredItems.map((item) => (
                       <tr
                         key={item.inventoryID || item._id}
                         className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"

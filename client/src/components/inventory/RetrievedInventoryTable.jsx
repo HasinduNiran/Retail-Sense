@@ -1,18 +1,33 @@
+// React and Router imports
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+// UI Framework imports
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+import Swal from 'sweetalert2';
+
+// Icons
 import { FiX } from 'react-icons/fi';
 import { MdSend, MdRestartAlt } from 'react-icons/md';
-import Swal from 'sweetalert2';
-import API_CONFIG from '../../config/apiConfig';
+
+// Date formatting
+import { format } from 'date-fns';
+
+// PropTypes
 import PropTypes from 'prop-types';
+
+// Local imports
+import API_CONFIG from '../../config/apiConfig';
+import axios from 'axios';
 
 const RetrievedInventoryTable = () => {
   const [retrievedItems, setRetrievedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredItems, setFilteredItems] = useState([]);
+  const navigate = useNavigate();
 
   // Color validation helper
   const isValidColor = (color) => {
@@ -146,6 +161,22 @@ const RetrievedInventoryTable = () => {
     }
   };
 
+  // Search and filter logic
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredItems(retrievedItems);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = retrievedItems.filter(item => 
+        item.ItemName?.toLowerCase().includes(query) ||
+        item.Category?.toLowerCase().includes(query) ||
+        item.Brand?.toLowerCase().includes(query) ||
+        item.Style?.toLowerCase().includes(query)
+      );
+      setFilteredItems(filtered);
+    }
+  }, [searchQuery, retrievedItems]);
+
   useEffect(() => {
     fetchRetrievedInventory();
   }, []);
@@ -200,10 +231,16 @@ const RetrievedInventoryTable = () => {
     return `${API_CONFIG.BASE_URL}/${relativePath}`;
   };
 
+  const handleRetrieveSuccess = () => {
+    fetchRetrievedInventory();
+    setIsModalOpen(false);
+    navigate('/manager/inventory-management');
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
   }
@@ -215,81 +252,93 @@ const RetrievedInventoryTable = () => {
       transition={{ duration: 0.5 }}
       className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold text-purple-800 mb-6">Retrieved Inventory History</h2>
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-purple-800">Retrieved Inventory History</h2>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search retrieved items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-64 px-4 py-2 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <FiX size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-gray-700">
-            <thead className="bg-purple-100 text-purple-800">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="p-4 font-semibold rounded-tl-lg">Image</th>
-                <th className="p-4 font-semibold">Item Name</th>
-                <th className="p-4 font-semibold">Category</th>
-                <th className="p-4 font-semibold">Retrieved Qty</th>
-                <th className="p-4 font-semibold">Brand</th>
-                <th className="p-4 font-semibold">Style</th>
-                <th className="p-4 font-semibold">Colors</th>
-                <th className="p-4 font-semibold">Sizes</th>
-                <th className="p-4 font-semibold">Unit Price</th>
-                <th className="p-4 font-semibold">Retrieved Date</th>
-                <th className="p-4 font-semibold rounded-tr-lg">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retrieved Qty</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Style</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colors</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sizes</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retrieved Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {retrievedItems.length > 0 ? (
-                retrievedItems.map((item) => (
-                  <tr
-                    key={item._id}
-                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="p-4">
-                      <img
-                        src={getImageUrl(item.image)}
-                        alt={item.ItemName}
-                        className="w-16 h-16 object-cover rounded-lg"
-                        onError={(e) => { e.target.src = '/default-img.jpg' }}
-                      />
-                    </td>
-                    <td className="p-4">{item.ItemName}</td>
-                    <td className="p-4">{item.Category}</td>
-                    <td className="p-4">{item.retrievedQuantity}</td>
-                    <td className="p-4">{item.Brand || '-'}</td>
-                    <td className="p-4">{item.Style || '-'}</td>
-                    <td className="p-4">{renderColors(item.colors)}</td>
-                    <td className="p-4">{renderSizes(item.sizes)}</td>
-                    <td className="p-4">{item.unitPrice ? `Rs. ${item.unitPrice.toFixed(2)}` : '-'}</td>
-                    <td className="p-4">
-                      {format(new Date(item.retrievedDate), 'MMM d, yyyy')}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setIsModalOpen(true);
-                          }}
-                          className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded-full transition-all duration-200 transform hover:scale-110"
-                          title="Go to Popup"
-                        >
-                          <MdSend size={22} className="transform rotate-[-45deg]" />
-                        </button>
-                        <button
-                          onClick={() => handleRevert(item)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-all duration-200 transform hover:scale-110"
-                          title="Revert to Inventory"
-                        >
-                          <MdRestartAlt size={22} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="11" className="text-center py-8 text-gray-500">
-                    No retrieved items found
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredItems.map((item) => (
+                <tr
+                  key={item._id}
+                  className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <td className="p-4">
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={item.ItemName}
+                      className="w-16 h-16 object-cover rounded-lg"
+                      onError={(e) => { e.target.src = '/default-img.jpg' }}
+                    />
+                  </td>
+                  <td className="p-4">{item.ItemName}</td>
+                  <td className="p-4">{item.Category}</td>
+                  <td className="p-4">{item.retrievedQuantity}</td>
+                  <td className="p-4">{item.Brand || '-'}</td>
+                  <td className="p-4">{item.Style || '-'}</td>
+                  <td className="p-4">{renderColors(item.colors)}</td>
+                  <td className="p-4">{renderSizes(item.sizes)}</td>
+                  <td className="p-4">{item.unitPrice ? `Rs. ${item.unitPrice.toFixed(2)}` : '-'}</td>
+                  <td className="p-4">
+                    {format(new Date(item.retrievedDate), 'MMM d, yyyy')}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setIsModalOpen(true);
+                        }}
+                        className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded-full transition-all duration-200 transform hover:scale-110"
+                        title="Go to Popup"
+                      >
+                        <MdSend size={22} className="transform rotate-[-45deg]" />
+                      </button>
+                      <button
+                        onClick={() => handleRevert(item)}
+                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-all duration-200 transform hover:scale-110"
+                        title="Revert to Inventory"
+                      >
+                        <MdRestartAlt size={22} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>

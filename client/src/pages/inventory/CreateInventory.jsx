@@ -44,7 +44,12 @@ const CreateInventory = () => {
       return; // Only block non-numeric input
     }
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Convert ItemName to uppercase
+    if (name === 'ItemName') {
+      setFormData((prev) => ({ ...prev, [name]: value.toUpperCase() }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleInputBlur = (e) => {
@@ -162,6 +167,7 @@ const CreateInventory = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
+    // Check all required fields
     const requiredFields = [
       { field: 'ItemName', label: 'Item Name' },
       { field: 'Category', label: 'Category' },
@@ -173,9 +179,17 @@ const CreateInventory = () => {
       { field: 'reorderThreshold', label: 'Re-order Threshold' },
       { field: 'SupplierName', label: 'Supplier Name' },
       { field: 'SupplierContact', label: 'Supplier Contact' },
+      { field: 'Colors', label: 'Colors' },
+      { field: 'Sizes', label: 'Sizes' }
     ];
 
-    const missingFields = requiredFields.filter((field) => !formData[field.field]);
+    const missingFields = requiredFields.filter((field) => {
+      if (Array.isArray(formData[field.field])) {
+        return formData[field.field].length === 0;
+      }
+      return !formData[field.field];
+    });
+
     if (missingFields.length > 0) {
       Swal.fire({
         icon: 'error',
@@ -229,6 +243,24 @@ const CreateInventory = () => {
 
     try {
       setIsSubmitting(true);
+
+      // Check for duplicate item name
+      const checkResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/check-duplicate?itemName=${encodeURIComponent(formData.ItemName)}`, {
+        method: 'GET'
+      });
+
+      const checkResult = await checkResponse.json();
+      if (checkResult.isDuplicate) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Duplicate Item',
+          text: 'An item with this name already exists. Please use a different name.',
+          confirmButtonColor: '#89198f',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const formDataToSend = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         if (key === 'Sizes' || key === 'Colors') {
@@ -252,7 +284,7 @@ const CreateInventory = () => {
         text: 'Inventory item created successfully!',
         confirmButtonColor: '#89198f',
       }).then(() => {
-        navigate('/manage/inventory-management');
+        navigate('/manager/inventory-management');
       });
     } catch (error) {
       Swal.fire({
