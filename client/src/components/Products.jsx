@@ -73,25 +73,23 @@ const Products = () => {
   const fetchInventories = async () => {
     setLoading(true);
     try {
-      // Fetch both regular inventory and retrieved inventory items
-      const [inventoryRes, retrievedRes] = await Promise.all([
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}`),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.ALL}`)
-      ]);
-
-      const inventoryData = await inventoryRes.json();
+      // Fetch retrieved inventory items only
+      const retrievedRes = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.RETRIEVED.ALL}`);
       const retrievedData = await retrievedRes.json();
 
-      // Combine and filter items that have unit prices or final prices
-      const allItems = [
-        ...inventoryData.items || [],
-        ...retrievedData || []
-      ].filter(item => 
-        (item.finalPrice && item.finalPrice > 0) || 
-        (item.unitPrice && item.unitPrice > 0)
-      );
+      // Filter items that have unit prices or final prices and have quantity
+      const validItems = (retrievedData || [])
+        .filter(item => 
+          ((item.finalPrice && item.finalPrice > 0) || 
+          (item.unitPrice && item.unitPrice > 0)) &&
+          item.retrievedQuantity > 0
+        )
+        .map(item => ({
+          ...item,
+          quantity: item.retrievedQuantity // Map retrievedQuantity to quantity for ProductCard
+        }));
 
-      setInventories(allItems);
+      setInventories(validItems);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching inventories:', error);
@@ -99,51 +97,49 @@ const Products = () => {
     }
   };
 
-  const handleItemClick = (itemId) => {
-    navigate(`/item/${itemId}`);
-  };
-
   useEffect(() => {
     fetchInventories();
   }, []);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-16 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-7xl mx-auto">
-        <h2 className="text-4xl font-bold text-center text-purple-800 mb-12">
-          Our Products
-        </h2>
-        <div className="relative px-8 md:px-12">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <FaSpinner className="animate-spin text-4xl text-purple-600" />
-            </div>
-          ) : inventories.length > 0 ? (
-            <Slider {...settings}>
-              {inventories.map((item) => (
-                <div key={item._id} className="px-4 py-2">
-                  <div onClick={() => handleItemClick(item._id)} className="cursor-pointer">
-                    <ProductCard
-                      id={item._id}
-                      img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : "/default-img.jpg"}
-                      name={item.ItemName}
-                      price={item.finalPrice || item.unitPrice}
-                      originalPrice={item.originalPrice || (item.finalPrice && item.unitPrice > item.finalPrice ? item.unitPrice : null)}
-                      category={item.Category}
-                      brand={item.Brand}
-                      quantity={item.Quantity || item.retrievedQuantity}
-                    />
-                  </div>
-                </div>
-              ))}
-            </Slider>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              No products available at the moment
-            </div>
-          )}
-        </div>
+  const handleCardClick = (id) => {
+    navigate(`/item/${id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <FaSpinner className="animate-spin text-4xl text-purple-600" />
       </div>
+    );
+  }
+
+  return (
+    <div className="py-8 px-4 md:px-8">
+      <h2 className="text-2xl font-bold text-center mb-8 text-purple-800">Featured Products</h2>
+      {inventories.length > 0 ? (
+        <div className="relative px-10">
+          <Slider {...settings}>
+            {inventories.map((item) => (
+              <div key={item._id} className="px-4">
+                <ProductCard
+                  id={item._id}
+                  img={item.image ? `${API_CONFIG.BASE_URL}/${item.image}` : '/default-img.jpg'}
+                  name={item.ItemName}
+                  price={item.finalPrice || item.unitPrice}
+                  category={item.Category}
+                  brand={item.Brand}
+                  quantity={item.quantity}
+                  onClick={() => handleCardClick(item._id)}
+                />
+              </div>
+            ))}
+          </Slider>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500">
+          No products available at the moment.
+        </div>
+      )}
     </div>
   );
 };

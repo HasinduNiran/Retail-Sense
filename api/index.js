@@ -4,6 +4,8 @@ import promotionRoutes from './routes/promotion.routes.js';
 import InventoryRoutes from './routes/inventory.routes.js';
 import UserRoutes from './routes/user.route.js';
 import FeedbackRoutes from './routes/feedback.routs.js';
+import authRoutes from './routes/auth.routs.js';
+import orderRoutes from './routes/order.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +24,7 @@ const app = express();
 // Middleware
 app.use(express.json()); 
 app.use(cors({ 
- origin: 'http://localhost:5173',
+ origin: 'http://localhost:5174',
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   allowedHeaders: ['Content-Type'], 
 }));
@@ -51,7 +53,20 @@ ensureUploadsDir();
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/inventory', InventoryRoutes);
 app.use('/api/users', UserRoutes);
-app.use('/api/feedbacks',FeedbackRoutes);
+app.use('/api/feedbacks', FeedbackRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  return res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+  });
+});
 
 // MongoDB Connection
 const connectDB = async () => {

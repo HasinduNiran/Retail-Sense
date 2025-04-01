@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-// import ProductCard from "../../layouts/ProductCard";
-// import items from "../../components/disc&offer/items"; // Data for fashion items
-import LoadingSpinner from "../../components/Spinner";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { motion } from "framer-motion";
+import LoadingSpinner from "../../components/Spinner";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import { useSelector } from "react-redux";
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
@@ -16,15 +15,13 @@ const Cart = () => {
   const navigate = useNavigate();
   const { currentUser } = useSelector((state) => state.user);
 
-  // Load cart items from local storage
   useEffect(() => {
     const cartData = JSON.parse(localStorage.getItem("cart")) || [];
     setCartItems(cartData);
     calculateSubtotal(cartData);
-    setIsLoading(false); // Set loading to false after loading data
+    setIsLoading(false);
   }, []);
 
-  // Function to calculate subtotal
   const calculateSubtotal = (items) => {
     const total = items.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -33,7 +30,6 @@ const Cart = () => {
     setSubtotal(total);
   };
 
-  // Handle remove item
   const handleRemoveItem = (itemId) => {
     const updatedCart = cartItems.filter((item) => item.itemId !== itemId);
     setCartItems(updatedCart);
@@ -41,7 +37,6 @@ const Cart = () => {
     calculateSubtotal(updatedCart);
   };
 
-  // Handle increase quantity
   const handleIncreaseQuantity = (itemId) => {
     const updatedCart = cartItems.map((item) =>
       item.itemId === itemId ? { ...item, quantity: item.quantity + 1 } : item
@@ -51,7 +46,6 @@ const Cart = () => {
     calculateSubtotal(updatedCart);
   };
 
-  // Handle decrease quantity
   const handleDecreaseQuantity = (itemId) => {
     const updatedCart = cartItems.map((item) =>
       item.itemId === itemId && item.quantity > 1
@@ -63,9 +57,7 @@ const Cart = () => {
     calculateSubtotal(updatedCart);
   };
 
-  // Handle apply promo code
   const handleApplyPromo = () => {
-    // Example: Apply a 10% discount if the promo code is "SAVE10"
     if (promoCode === "SAVE10") {
       setDiscount(subtotal * 0.1);
     } else {
@@ -74,34 +66,32 @@ const Cart = () => {
     }
   };
 
-  // Show loading spinner if loading
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
   const handleCheckout = () => {
     const checkoutData = {
-      userId: currentUser._id, // Static user ID for demonstration
+      userId: currentUser._id,
       items: cartItems,
       total: subtotal - discount,
     };
-
-    // Pass data to the checkout page using navigate
     navigate("/checkout", { state: checkoutData });
   };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div>
       <Navbar />
       <div className="min-h-screen p-8 flex flex-col items-center">
         <div className="w-full lg:w-3/4 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-10 mt-20">
-          {/* Left Side: Cart Items */}
           <div className="w-full lg:w-2/3 space-y-6">
             <h1 className="text-3xl font-semibold mb-4">Your Fashion Cart</h1>
             {cartItems.length > 0 ? (
               cartItems.map((item) => (
-                <div
+                <motion.div
                   key={item.itemId}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   className="flex items-center justify-between p-4 border-b"
                 >
                   <img
@@ -111,7 +101,7 @@ const Cart = () => {
                   />
                   <div className="flex-1 px-4">
                     <h3 className="text-xl font-semibold">{item.title}</h3>
-                    <p className="text-gray-600">Price: ${item.price}</p>
+                    <p className="text-gray-600">Price: Rs. {item.price}</p>
                     <p className="text-gray-600">Size: {item.size}</p>
                     <p className="text-gray-600">
                       Color:{" "}
@@ -124,8 +114,7 @@ const Cart = () => {
                       >
                         ws
                       </span>
-                    </p>{" "}
-                    {/* Display color */}
+                    </p>
                     <div className="flex items-center space-x-4">
                       <button
                         onClick={() => handleDecreaseQuantity(item.itemId)}
@@ -142,7 +131,7 @@ const Cart = () => {
                       </button>
                     </div>
                     <p className="text-gray-800 font-semibold">
-                      Total: ${(item.price * item.quantity).toFixed(2)}
+                      Total: Rs. {(item.price * item.quantity).toFixed(2)}
                     </p>
                   </div>
                   <button
@@ -151,14 +140,13 @@ const Cart = () => {
                   >
                     Remove
                   </button>
-                </div>
+                </motion.div>
               ))
             ) : (
               <p>Your cart is empty.</p>
             )}
           </div>
 
-          {/* Right Side: Order Summary */}
           <div className="w-full lg:w-1/3 p-6 bg-gray-100 rounded-lg space-y-4">
             <h2 className="text-2xl font-semibold">Order Summary</h2>
             {cartItems.map((item) => (
@@ -167,24 +155,24 @@ const Cart = () => {
                 className="flex justify-between items-center"
               >
                 <span className="font-semibold">{item.title}</span>
-                <span> {item.quantity}</span>
-                <span> ${(item.price * item.quantity).toFixed(2)}</span>
+                <span>{item.quantity}</span>
+                <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             <hr className="my-4" />
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>Rs. {subtotal.toFixed(2)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span>-${discount.toFixed(2)}</span>
+                <span>-Rs. {discount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span>Total:</span>
-              <span>${(subtotal - discount).toFixed(2)}</span>
+              <span>Rs. {(subtotal - discount).toFixed(2)}</span>
             </div>
             <input
               type="text"
@@ -195,12 +183,12 @@ const Cart = () => {
             />
             <button
               onClick={handleApplyPromo}
-              className="w-full bg-green-500 text-white py-2 rounded-full hover:bg-green-600 transition duration-300"
+              className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition duration-300"
             >
               Apply Promo Code
             </button>
             <button
-              className="w-full bg-blue-500 text-white py-2 rounded-full hover:bg-blue-600 transition duration-300"
+              className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-300"
               onClick={handleCheckout}
             >
               Checkout

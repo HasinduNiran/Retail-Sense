@@ -10,11 +10,13 @@ import UserManagement from "./UserManagement";
 import InventoryManagement from "./InventoryManagement";
 import OrderManagement from "./OrderManagement";
 import DiscountManagement from "./DiscountManagement";
-import SalesForecasting from "./SalesForcasting";
+// import SalesForecasting from "./SalesForcasting";
 import Profile from "./Profile";
 import CreateInventory from "../../pages/inventory/CreateInventory";
 import AddOffer from "../discount&offer/AddOffer";
 import UpdateOffer from "../discount&offer/UpdateOffer";
+
+import ReadAllfeedback from "./ReadAllfeedback";
 
 const contentVariants = {
   open: { marginLeft: 250, transition: { type: "spring", stiffness: 50 } },
@@ -60,7 +62,7 @@ export default function DashboardLayout() {
           />
           <Route path="/add-discount" element={<AddOffer />} />
           <Route path="/update-discount/:id" element={<UpdateOffer />} />
-          <Route path="/sales-forecasting" element={<SalesForecasting />} />
+          <Route path="/allfeedback" element={<ReadAllfeedback />}/>
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </motion.main>

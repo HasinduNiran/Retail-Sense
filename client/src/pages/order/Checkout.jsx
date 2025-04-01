@@ -9,6 +9,9 @@ import { FaCcVisa } from "react-icons/fa";
 import { SiAmericanexpress } from "react-icons/si";
 // import generateBill from "../components/GenarateBill";
 
+// Configure axios base URL
+axios.defaults.baseURL = 'http://localhost:3000';
+
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -47,7 +50,20 @@ const Checkout = () => {
   // Helper function to handle input changes for card info
   const handleCardChange = (e) => {
     const { name, value } = e.target;
-    setCardInfo((prevState) => ({ ...prevState, [name]: value }));
+    if (name === 'expiryDate') {
+      const formattedValue = formatExpiryDate(value);
+      setCardInfo((prevState) => ({ ...prevState, [name]: formattedValue }));
+    } else {
+      setCardInfo((prevState) => ({ ...prevState, [name]: value }));
+    }
+  };
+
+  const formatExpiryDate = (value) => {
+    const cleanValue = value.replace(/\D/g, '');
+    if (cleanValue.length >= 2) {
+      return cleanValue.slice(0, 2) + '/' + cleanValue.slice(2, 4);
+    }
+    return cleanValue;
   };
 
   const getCardType = (cardNumber) => {
@@ -164,25 +180,33 @@ const Checkout = () => {
     if (!validateForm()) return;
 
     setLoading(true);
+    
+    // Transform items array to match the schema
+    const transformedItems = items.map(item => ({
+      itemId: item.itemId,
+      quantity: item.quantity || 1,
+      price: item.price,
+      title: item.title,
+      color: item.color || '',
+      size: item.size,
+      img: item.img
+    }));
+
     const orderData = {
       userId,
-      items,
+      items: transformedItems,
       total,
       customerInfo,
       deliveryInfo,
       paymentMethod,
-      cardInfo: paymentMethod === "Card" ? cardInfo : undefined, // Only send cardInfo if payment is by Card
+      cardInfo: paymentMethod === "Card" ? cardInfo : undefined,
     };
 
     try {
-      console.log(orderData.items);
+      console.log("Sending order data:", orderData);
 
-      const response = await axios.post("/api/order/add", orderData); // Ensure the URL is correct
+      const response = await axios.post("/api/orders/add", orderData);
       localStorage.removeItem("cart");
-      //   generateBill({
-      //     ...orderData,
-      //     orderId: response.data.orderId,
-      //   });
       setLoading(false);
       Swal.fire(
         "Success",
@@ -193,7 +217,16 @@ const Checkout = () => {
       });
     } catch (error) {
       setLoading(false);
-      Swal.fire("Error", "Failed to place order. Please try again.", "error");
+      console.error("Order error details:", {
+        data: error.response?.data,
+        status: error.response?.status,
+        orderData: orderData
+      });
+      Swal.fire(
+        "Error",
+        error.response?.data?.error?.[0] || error.response?.data?.message || "Failed to place order. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -306,7 +339,7 @@ const Checkout = () => {
             />
             {!/^0\d{9}$/.test(customerInfo.mobile) && customerInfo.mobile && (
               <p className="text-red-500 text-xs mt-1">
-                Please enter a valid email address.
+                Please enter a valid mobile number starting with 0 and 10 digits long.
               </p>
             )}
 
@@ -362,7 +395,7 @@ const Checkout = () => {
               {!/^\d{5}$/.test(deliveryInfo.postalCode) &&
                 deliveryInfo.postalCode && (
                   <p className="text-red-500 text-xs mt-1">
-                    Please enter a valid email address.
+                    Please enter a valid postal code (5 digits).
                   </p>
                 )}
             </>
@@ -410,6 +443,9 @@ const Checkout = () => {
                     {getCardType(cardInfo.cardNumber) === "Visa" && (
                       <FaCcVisa />
                     )}
+                    {getCardType(cardInfo.cardNumber) === "American Express" && (
+                      <SiAmericanexpress />
+                    )}
                   </i>
                 </div>
                 {!getCardType(cardInfo.cardNumber) && cardInfo.cardNumber && (
@@ -424,26 +460,47 @@ const Checkout = () => {
                   placeholder="Expiry Date (MM/YY)"
                   value={cardInfo.expiryDate}
                   onChange={handleCardChange}
+                  maxLength={5}
+                  onKeyDown={(e) => {
+                    if (
+                      !/^\d$/.test(e.key) &&
+                      e.key !== 'Backspace' &&
+                      e.key !== 'Tab'
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full p-2 border rounded"
                 />
+                {!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardInfo.expiryDate) &&
+                  cardInfo.expiryDate && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Please enter a valid expiry date (MM/YY)
+                    </p>
+                  )}
                 <input
-                  type="text"
+                  type="password"
                   name="cvv"
                   placeholder="CVV"
                   value={cardInfo.cvv}
                   maxLength={3}
                   onKeyDown={(e) => {
                     if (
-                      !/^\d$/.test(e.key) && // Only allow digits (0-9)
-                      e.key !== "Backspace" && // Allow Backspace
-                      e.key !== "Tab" // Allow Tab
+                      !/^\d$/.test(e.key) &&
+                      e.key !== "Backspace" &&
+                      e.key !== "Tab"
                     ) {
-                      e.preventDefault(); // Prevent default action if key is not allowed
+                      e.preventDefault();
                     }
                   }}
                   onChange={handleCardChange}
                   className="w-full p-2 border rounded"
                 />
+                {!/^\d{3}$/.test(cardInfo.cvv) && cardInfo.cvv && (
+                  <p className="text-red-500 text-xs mt-1">
+                    Please enter a valid 3-digit CVV
+                  </p>
+                )}
               </>
             )}
 

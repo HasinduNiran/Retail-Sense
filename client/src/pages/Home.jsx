@@ -59,7 +59,7 @@ export default function Home() {
       </motion.div>
 
       {/* Shop Section */}
-      <motion.div
+      {/* <motion.div
         id="shop"
         variants={containerVariants}
         initial="hidden"
@@ -69,7 +69,7 @@ export default function Home() {
         <motion.div variants={componentVariants}>
           <Shop />
         </motion.div>
-      </motion.div>
+      </motion.div> */}
 
       {/* Collection Section */}
       <motion.div

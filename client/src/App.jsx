@@ -33,7 +33,9 @@ import CreateUser from "./pages/usermanagement/Createuser";
 import Oneuser from "./pages/usermanagement/Oneuser";
 
 import Createfeedback from "./pages/feedback/Createfeedback";
- import ReadAllfeedback from "./pages/feedback/ReadAllfeedback";
+// import ReadAllfeedback from "./pages/feedback/ReadAllfeedback";
+ import ReadAllFeedback from "./components/dashboard/ReadAllfeedback";
+
  import Onefeedback from "./pages/feedback/Onefeedback";
  import EditFeedback from "./pages/feedback/EditFeedback";
 
@@ -49,7 +51,7 @@ export default function App() {
         <Route path="/item/:id" element={<FashionItem />} />
 
         {/* Dashboard Route */}
-        <Route element={<PrivateAdmin />}>
+        <Route >
           <Route path="/manager/*" element={<DashboardLayout />} />
           <Route path="/update/:id" element={<UpdateInventory />} />
           <Route path="/update/:id" element={<DeleteInventory />} />
@@ -78,7 +80,7 @@ export default function App() {
         <Route path="/user/:id" element={<Oneuser />}/> 
 
         <Route path="/createfeedback" element={<Createfeedback />}/>
-        <Route path="/allfeedback" element={<ReadAllfeedback />}/>
+        <Route path="/allfeedback" element={<ReadAllFeedback />}/>
         <Route path="/feedback/:id" element={<Onefeedback />}/>
         <Route path="/editfeedback/:id" element={<EditFeedback />}/>
 

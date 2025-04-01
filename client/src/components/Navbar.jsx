@@ -114,6 +114,11 @@ export default function Navbar() {
                             My Orders
                           </li>
                         </NavLink>
+                        <NavLink to="/createfeedback">
+                          <li className="px-4 py-2 hover:bg-SecondaryColor cursor-pointer text-ExtraDarkColor">
+                            Feedback
+                          </li>
+                        </NavLink>
                         <li
                           className="px-4 py-2 hover:bg-SecondaryColor cursor-pointer text-ExtraDarkColor"
                           onClick={handleSignOut}

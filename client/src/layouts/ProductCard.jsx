@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { FaShoppingCart, FaStar, FaTag } from 'react-icons/fa';
 import PropTypes from 'prop-types';
 
-const ProductCard = ({ id, img, name, price = 0, category, brand, quantity = 0, originalPrice }) => {
+const ProductCard = ({ id, img, name, price = 0, category, brand, quantity = 0, originalPrice, onClick }) => {
   // Calculate discount percentage if originalPrice is provided
   const hasDiscount = originalPrice && originalPrice > price;
   const discountPercentage = hasDiscount 
@@ -16,7 +16,10 @@ const ProductCard = ({ id, img, name, price = 0, category, brand, quantity = 0, 
   };
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col">
+    <div 
+      className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col cursor-pointer"
+      onClick={onClick}
+    >
       <div className="relative overflow-hidden h-60 group">
         <img 
           src={img} 
@@ -56,37 +59,45 @@ const ProductCard = ({ id, img, name, price = 0, category, brand, quantity = 0, 
         </div>
       </div>
       
-      <div className="p-4 flex-grow flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-lg text-gray-800 line-clamp-2">{name}</h3>
-          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">{category}</span>
-        </div>
-        
-        <div className="mb-4">
-          {hasDiscount ? (
-            <div className="flex items-center gap-2">
-              <p className="text-xl font-bold text-purple-800">${formatPrice(price)}</p>
-              <p className="text-sm text-gray-500 line-through">${formatPrice(originalPrice)}</p>
-            </div>
-          ) : (
-            <p className="text-xl font-bold text-purple-800">${formatPrice(price)}</p>
+      <div className="flex-grow flex flex-col p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">{name}</h3>
+        <div className="mt-auto">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-purple-600">
+              Rs. {formatPrice(price)}
+            </span>
+            {hasDiscount && (
+              <span className="text-sm text-gray-500 line-through">
+                Rs. {formatPrice(originalPrice)}
+              </span>
+            )}
+          </div>
+          {category && (
+            <span className="text-sm text-gray-600 mt-1 block">
+              {category}
+            </span>
+          )}
+          {brand && (
+            <span className="text-sm text-gray-600 block">
+              {brand}
+            </span>
           )}
         </div>
-        
-        <div className="mt-auto">
-          <Link 
-            to={`/item/${id}`} 
-            className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium ${
-              quantity > 0 
-                ? 'bg-purple-700 hover:bg-purple-800 text-white' 
-                : 'bg-gray-300 cursor-not-allowed text-gray-600'
-            } transition-colors duration-300`}
-            disabled={quantity <= 0}
-          >
-            <FaShoppingCart />
-            {quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
-          </Link>
-        </div>
+      </div>
+      
+      <div className="mt-auto">
+        <Link 
+          to={`/item/${id}`} 
+          className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md font-medium ${
+            quantity > 0 
+              ? 'bg-purple-700 hover:bg-purple-800 text-white' 
+              : 'bg-gray-300 cursor-not-allowed text-gray-600'
+          } transition-colors duration-300`}
+          disabled={quantity <= 0}
+        >
+          <FaShoppingCart />
+          {quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
+        </Link>
       </div>
     </div>
   );
@@ -100,7 +111,8 @@ ProductCard.propTypes = {
   category: PropTypes.string,
   brand: PropTypes.string,
   quantity: PropTypes.number,
-  originalPrice: PropTypes.number
+  originalPrice: PropTypes.number,
+  onClick: PropTypes.func
 };
 
 export default ProductCard;

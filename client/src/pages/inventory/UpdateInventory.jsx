@@ -127,7 +127,7 @@ function UpdateInventory() {
           if (result.isConfirmed) {
             fetchInventory(); // Retry
           } else {
-            navigate('/inventory-management'); // Go back
+            navigate('/manager/inventory-management'); // Go back
           }
         });
       } finally {
@@ -144,7 +144,7 @@ function UpdateInventory() {
         text: "No item ID provided",
         confirmButtonText: 'Go Back'
       }).then(() => {
-        navigate('/inventory-management');
+        navigate('/manager/inventory-management');
       });
       setLoading(false);
     }
@@ -152,7 +152,72 @@ function UpdateInventory() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Only restrict non-numeric input for these fields
+    if ((name === 'reorderThreshold' || name === 'Quantity') && !/^\d*$/.test(value)) {
+      return; // Only block non-numeric input
+    }
+
+    // Convert ItemName to uppercase
+    if (name === 'ItemName') {
+      setFormData((prev) => ({ ...prev, [name]: value.toUpperCase() }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleInputBlur = (e) => {
+    const { name, value } = e.target;
+    if (!value) return; // Don't validate empty fields on blur
+    
+    // Validation for reorderThreshold
+    if (name === 'reorderThreshold') {
+      if (parseInt(value) < 100) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Input',
+          text: 'Re-order threshold must be at least 100',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for Quantity
+    if (name === 'Quantity') {
+      if (parseInt(value) < 110) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Input',
+          text: 'Quantity must be greater than 110',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for SupplierContact (email)
+    if (name === 'SupplierContact') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Email',
+          text: 'Please enter a valid email address',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
+
+    // Validation for SupplierName
+    if (name === 'SupplierName') {
+      if (/^\d+$/.test(value) || /^[^a-zA-Z0-9]+$/.test(value)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Supplier Name',
+          text: 'Supplier name cannot contain only numbers or special characters',
+          confirmButtonColor: '#89198f',
+        });
+      }
+    }
   };
 
   const handleSizeToggle = (size) => {
@@ -219,18 +284,69 @@ function UpdateInventory() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    // Check all required fields
     const requiredFields = [
-      'ItemName', 'Category', 'Location', 'Quantity', 'Brand',
-      'Gender', 'Style', 'reorderThreshold', 'SupplierName', 'SupplierContact',
+      { field: 'ItemName', label: 'Item Name' },
+      { field: 'Category', label: 'Category' },
+      { field: 'Location', label: 'Location' },
+      { field: 'Quantity', label: 'Quantity' },
+      { field: 'Brand', label: 'Brand' },
+      { field: 'Gender', label: 'Gender' },
+      { field: 'Style', label: 'Style' },
+      { field: 'reorderThreshold', label: 'Re-order Threshold' },
+      { field: 'SupplierName', label: 'Supplier Name' },
+      { field: 'SupplierContact', label: 'Supplier Contact' },
+      { field: 'Colors', label: 'Colors' },
+      { field: 'Sizes', label: 'Sizes' }
     ];
 
-    const missingFields = requiredFields.filter((field) => !formData[field]);
+    const missingFields = requiredFields.filter((field) => {
+      if (Array.isArray(formData[field.field])) {
+        return formData[field.field].length === 0;
+      }
+      return !formData[field.field];
+    });
+
     if (missingFields.length > 0) {
       Swal.fire({
         icon: 'error',
         title: 'Required Fields Missing',
-        text: `Please fill in: ${missingFields.join(', ')}`,
+        text: `Please fill in: ${missingFields.map(f => f.label).join(', ')}`,
+        confirmButtonColor: '#89198f',
+      });
+      return;
+    }
+
+    // Additional validations
+    const validations = [
+      {
+        condition: parseInt(formData.reorderThreshold) < 100,
+        message: 'Re-order threshold must be at least 100'
+      },
+      {
+        condition: parseInt(formData.Quantity) < 110,
+        message: 'Quantity must be greater than 110'
+      },
+      {
+        condition: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.SupplierContact),
+        message: 'Please enter a valid email address for Supplier Contact'
+      },
+      {
+        condition: /^\d+$/.test(formData.SupplierName) || /^[^a-zA-Z0-9]+$/.test(formData.SupplierName),
+        message: 'Supplier name cannot contain only numbers or special characters'
+      }
+    ];
+
+    const failedValidation = validations.find(v => v.condition);
+    if (failedValidation) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: failedValidation.message,
         confirmButtonColor: '#89198f',
       });
       return;
@@ -248,6 +364,24 @@ function UpdateInventory() {
 
     try {
       setIsSubmitting(true);
+
+      // Check for duplicate item name (only if name was changed)
+      const checkResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INVENTORY.BASE}/check-duplicate?itemName=${encodeURIComponent(formData.ItemName)}&excludeId=${id}`, {
+        method: 'GET'
+      });
+
+      const checkResult = await checkResponse.json();
+      if (checkResult.isDuplicate) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Duplicate Item',
+          text: 'An item with this name already exists. Please use a different name.',
+          confirmButtonColor: '#89198f',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const formDataToSend = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         if (key === 'Sizes' || key === 'Colors') {
@@ -274,7 +408,7 @@ function UpdateInventory() {
         text: 'Inventory item updated successfully!',
         confirmButtonColor: '#89198f',
       }).then(() => {
-        navigate('/inventory-management');
+        navigate('/manager/inventory-management');
       });
     } catch (error) {
       Swal.fire({
@@ -382,7 +516,8 @@ function UpdateInventory() {
                       name="ItemName"
                       value={formData.ItemName}
                       onChange={handleInputChange}
-                      className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                      onBlur={handleInputBlur}
+                      className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                       placeholder="e.g., Classic T-Shirt"
                       required
                     />
@@ -574,6 +709,7 @@ function UpdateInventory() {
                     name="Quantity"
                     value={formData.Quantity}
                     onChange={handleInputChange}
+                    onBlur={handleInputBlur}
                     min="0"
                     className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                     placeholder="e.g., 50"
@@ -588,6 +724,7 @@ function UpdateInventory() {
                     name="reorderThreshold"
                     value={formData.reorderThreshold}
                     onChange={handleInputChange}
+                    onBlur={handleInputBlur}
                     min="0"
                     className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                     placeholder="e.g., 10"
@@ -617,6 +754,7 @@ function UpdateInventory() {
                     name="SupplierName"
                     value={formData.SupplierName}
                     onChange={handleInputChange}
+                    onBlur={handleInputBlur}
                     className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                     placeholder="e.g., Fashion Co."
                     required
@@ -630,6 +768,7 @@ function UpdateInventory() {
                     name="SupplierContact"
                     value={formData.SupplierContact}
                     onChange={handleInputChange}
+                    onBlur={handleInputBlur}
                     className="mt-1 w-full p-3 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                     placeholder="e.g., +1 123-456-7890"
                     required
