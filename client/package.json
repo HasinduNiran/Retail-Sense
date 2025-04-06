@@ -51,7 +51,7 @@
     "react-step-progress-bar": "^1.0.3",
     "react-toastify": "^10.0.6",
     "react-tooltip": "^5.28.0",
-    "recharts": "^2.12.7",
+    "recharts": "^2.15.2",
     "redux-persist": "^6.0.0",
     "simplebar": "^6.2.7",
     "simplebar-react": "^3.2.6",
