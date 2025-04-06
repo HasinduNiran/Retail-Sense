@@ -2,9 +2,9 @@ import express from 'express';
 import mongoose from 'mongoose';
 import promotionRoutes from './routes/promotion.routes.js';
 import InventoryRoutes from './routes/inventory.routes.js';
-import UserRoutes from './routes/user.route.js';
-import FeedbackRoutes from './routes/feedback.routs.js';
-import authRoutes from './routes/auth.routs.js';
+import UserRoutes from './routes/user.routes.js';
+import FeedbackRoutes from './routes/feedback.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -24,7 +24,7 @@ const app = express();
 // Middleware
 app.use(express.json()); 
 app.use(cors({ 
- origin: 'http://localhost:5174',
+ origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   allowedHeaders: ['Content-Type'], 
 }));
