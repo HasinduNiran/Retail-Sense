@@ -168,11 +168,8 @@ const MyOrders = () => {
                     </div>
                     <p className="text-gray-800 font-semibold mt-4">
                       Total Cost: $
-                      {order.items
-                        .reduce(
-                          (total, item) => total + item.price * item.quantity,
-                          0
-                        )
+                      {order.total
+                        
                         .toFixed(2)}
                     </p>
                   </div>

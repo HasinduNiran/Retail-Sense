@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
+import axios from "axios";
 import LoadingSpinner from "../../components/Spinner";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -12,6 +13,9 @@ const Cart = () => {
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [promoError, setPromoError] = useState("");
+  const [activePromotion, setActivePromotion] = useState(null);
+  const [itemDiscounts, setItemDiscounts] = useState({});
   const navigate = useNavigate();
   const { currentUser } = useSelector((state) => state.user);
 
@@ -44,6 +48,12 @@ const Cart = () => {
     setCartItems(updatedCart);
     localStorage.setItem("cart", JSON.stringify(updatedCart));
     calculateSubtotal(updatedCart);
+    // Reset promotion when quantity changes
+    setPromoCode("");
+    setDiscount(0);
+    setActivePromotion(null);
+    setItemDiscounts({});
+    setPromoError("");
   };
 
   const handleDecreaseQuantity = (itemId) => {
@@ -55,14 +65,81 @@ const Cart = () => {
     setCartItems(updatedCart);
     localStorage.setItem("cart", JSON.stringify(updatedCart));
     calculateSubtotal(updatedCart);
+    // Reset promotion when quantity changes
+    setPromoCode("");
+    setDiscount(0);
+    setActivePromotion(null);
+    setItemDiscounts({});
+    setPromoError("");
   };
 
-  const handleApplyPromo = () => {
-    if (promoCode === "SAVE10") {
-      setDiscount(subtotal * 0.1);
-    } else {
+  const handleApplyPromo = async () => {
+    try {
+      setIsLoading(true);
+      setPromoError("");
+      const response = await axios.get(`http://localhost:3000/api/promotions/code/${promoCode}`);
+      const promotion = response.data.data;
+
+      if (!promotion) {
+        setPromoError("Invalid promotion code");
+        setDiscount(0);
+        setActivePromotion(null);
+        return;
+      }
+
+      // Check if promotion is still valid
+      const now = new Date();
+      const validUntil = new Date(promotion.validUntil);
+      if (now > validUntil) {
+        setPromoError("Promotion has expired");
+        setDiscount(0);
+        setActivePromotion(null);
+        return;
+      }
+
+      // Check minimum purchase requirement
+      if (subtotal < promotion.minimumPurchase) {
+        setPromoError(`Minimum purchase of Rs. ${promotion.minimumPurchase} required`);
+        setDiscount(0);
+        setActivePromotion(null);
+        return;
+      }
+
+      // Calculate discount based on type and apply to each applicable item
+      let totalDiscount = 0;
+      const newItemDiscounts = {};
+
+      for (const item of cartItems) {
+        const isApplicable = promotion.applicableProducts.includes(item.itemId) ||
+          promotion.applicableCategories.includes(item.category);
+
+        if (isApplicable) {
+          let itemDiscount = 0;
+          if (promotion.discountType === 'flat') {
+            itemDiscount = promotion.discountValue * item.quantity;
+          } else if (promotion.discountType === 'percentage') {
+            itemDiscount = (item.price * item.quantity * promotion.discountPercentage) / 100;
+          }
+          newItemDiscounts[item.itemId] = {
+            discountPerItem: promotion.discountType === 'flat' ? promotion.discountValue : (item.price * promotion.discountPercentage) / 100,
+            totalDiscount: itemDiscount,
+            quantity: item.quantity,
+            promoCode: promotion.promoCode
+          };
+          totalDiscount += itemDiscount;
+        }
+      }
+
+      setDiscount(totalDiscount);
+      setActivePromotion(promotion);
+      setItemDiscounts(newItemDiscounts);
+    } catch (error) {
+      console.error('Error applying promotion:', error);
+      setPromoError("Error applying promotion code");
       setDiscount(0);
-      alert("Invalid promo code!");
+      setActivePromotion(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -71,6 +148,7 @@ const Cart = () => {
       userId: currentUser._id,
       items: cartItems,
       total: subtotal - discount,
+      promoCode: activePromotion?.promoCode || null
     };
     navigate("/checkout", { state: checkoutData });
   };
@@ -102,6 +180,13 @@ const Cart = () => {
                   <div className="flex-1 px-4">
                     <h3 className="text-xl font-semibold">{item.title}</h3>
                     <p className="text-gray-600">Price: Rs. {item.price}</p>
+                    {itemDiscounts[item.itemId] && (
+                      <p className="text-green-500">
+                        Promo {itemDiscounts[item.itemId].promoCode}:
+                        {itemDiscounts[item.itemId].discountPerItem.toFixed(2)} × {itemDiscounts[item.itemId].quantity} = 
+                        Rs. {itemDiscounts[item.itemId].totalDiscount.toFixed(2)} off
+                      </p>
+                    )}
                     <p className="text-gray-600">Size: {item.size}</p>
                     <p className="text-gray-600">
                       Color:{" "}
@@ -172,21 +257,46 @@ const Cart = () => {
             )}
             <div className="flex justify-between">
               <span>Total:</span>
-              <span>Rs. {(subtotal - discount).toFixed(2)}</span>
+              <span>Rs. {activePromotion ? (subtotal - discount).toFixed(2) : subtotal.toFixed(2)}</span>
             </div>
-            <input
-              type="text"
-              placeholder="Promo Code"
-              className="w-full p-2 border rounded"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-            />
-            <button
-              onClick={handleApplyPromo}
-              className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition duration-300"
-            >
-              Apply Promo Code
-            </button>
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Enter Promo Code for Discount"
+                className="w-full p-2 border rounded"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+              />
+              {!promoCode && (
+                <p className="text-gray-500 text-sm mt-1">
+                  Add a promo code to get discounts on applicable items
+                </p>
+              )}
+              {promoError && (
+                <p className="text-red-500 text-sm">{promoError}</p>
+              )}
+              {activePromotion && (
+                <p className="text-green-500 text-sm">
+                  {activePromotion.discountType === 'percentage'
+                    ? `${activePromotion.discountPercentage}% off`
+                    : `Rs. ${discount} off (${activePromotion.discountValue} × ${cartItems.reduce((sum, item) => {
+                        const isApplicable = activePromotion.applicableProducts.includes(item.itemId) ||
+                          activePromotion.applicableCategories.includes(item.category);
+                        return sum + (isApplicable ? item.quantity : 0);
+                      }, 0)} items)`}
+                </p>
+              )}
+              <button
+                onClick={handleApplyPromo}
+                disabled={!promoCode || isLoading}
+                className={`w-full py-2 rounded transition duration-300 ${!promoCode || isLoading
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+                  }`}
+              >
+                {isLoading ? 'Applying...' : 'Apply Promo Code'}
+              </button>
+            </div>
             <button
               className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-300"
               onClick={handleCheckout}

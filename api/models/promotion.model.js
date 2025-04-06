@@ -45,7 +45,7 @@ const promotionSchema = new mongoose.Schema({
         type: String,
         enum: ['Men', 'Women', 'Unisex']
     }],
-    minimumPurchase: {
+     minimumPurchase: {
         type: Number,
         default: 0
     },
