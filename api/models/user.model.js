@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import mongooseSequence from 'mongoose-sequence'; // Import mongoose-sequence
+import mongooseSequence from 'mongoose-sequence';
 
-const connection = mongoose.connection; // Get mongoose connection
+const connection = mongoose.connection;
 
 const userSchema = new mongoose.Schema({
   userID: { type: Number, unique: true },
@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
     enum: ["admin", "customer"],
     default: "customer",
   },
+  image: { type: String }, // Optional field to store image path
 });
 
 // Auto-increment plugin

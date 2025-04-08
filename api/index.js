@@ -38,7 +38,7 @@ app.use('/uploads', express.static(uploadsDir, {
 
 // Ensure uploads directory exists
 const ensureUploadsDir = () => {
-    const dirs = ['inventory', 'promotions'];
+    const dirs = ['inventory', 'promotions','users'];
     dirs.forEach(dir => {
         const fullPath = path.join(uploadsDir, dir);
         if (!fs.existsSync(fullPath)) {

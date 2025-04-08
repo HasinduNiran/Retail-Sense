@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowLeft } from "react-icons/fi";
-import { MdPerson } from "react-icons/md"; // Icon for user editing
-import { BsPerson, BsEnvelope, BsLock, BsHouse, BsPhone } from "react-icons/bs";
+import { MdPerson, MdImage } from "react-icons/md"; // Added MdImage for image field
+import { BsPerson, BsEnvelope, BsHouse, BsPhone } from "react-icons/bs";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
 import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
@@ -14,10 +14,11 @@ function EditUser() {
   const [formData, setFormData] = useState({
     UserName: "",
     email: "",
-    password: "", // Leave blank to keep unchanged
     address: "",
     mobile: "",
+    image: null, // For new image upload
   });
+  const [existingImage, setExistingImage] = useState(null); // To store current image path
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -46,10 +47,11 @@ function EditUser() {
         setFormData({
           UserName: user.UserName,
           email: user.email,
-          password: "", // Password is not fetched for security; user can update if needed
           address: user.address || "",
           mobile: user.mobile,
+          image: null, // New image starts as null
         });
+        setExistingImage(user.image || null); // Set existing image path
       } catch (err) {
         setError(err.message);
         Swal.fire({
@@ -66,12 +68,33 @@ function EditUser() {
     fetchUser();
   }, [id]);
 
-  // Handle form input changes
+  // Handle text input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  // Handle image file change
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Optional: Validate file type and size
+      const validTypes = ["image/jpeg", "image/png", "image/gif"];
+      if (!validTypes.includes(file.type)) {
+        setError("Please upload a valid image (JPEG, PNG, or GIF)");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError("Image size must be less than 5MB");
+        return;
+      }
+    }
+    setFormData((prev) => ({
+      ...prev,
+      image: file || null, // Set to null if no file selected
     }));
   };
 
@@ -94,28 +117,21 @@ function EditUser() {
       return;
     }
 
-    if (formData.password && formData.password.length < 6) {
-      setError("Password must be at least 6 characters long if provided");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const userData = {
-        UserName: formData.UserName,
-        email: formData.email,
-        ...(formData.password && { password: formData.password }), // Only include if updated
-        address: formData.address || undefined,
-        mobile: Number(formData.mobile),
-      };
+      // Use FormData to handle file upload
+      const data = new FormData();
+      data.append("UserName", formData.UserName);
+      data.append("email", formData.email);
+      data.append("address", formData.address || "");
+      data.append("mobile", Number(formData.mobile));
+      if (formData.image) {
+        data.append("image", formData.image); // Add new image if provided
+      }
 
       const url = `${API_CONFIG.BASE_URL}/api/users/${id}`;
       const response = await fetch(url, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
+        body: data, // No Content-Type header needed with FormData
       });
 
       const result = await response.json();
@@ -217,22 +233,6 @@ function EditUser() {
                 />
               </div>
 
-              {/* Password
-              <div className="bg-PrimaryColor p-4 rounded-lg">
-                <label className="block text-DarkColor font-medium mb-2 flex items-center">
-                  <BsLock className="mr-2" size={20} />
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-                  placeholder="Enter new password"
-                />
-              </div> */}
-
               {/* Address */}
               <div className="bg-PrimaryColor p-4 rounded-lg">
                 <label className="block text-DarkColor font-medium mb-2 flex items-center">
@@ -264,6 +264,36 @@ function EditUser() {
                   placeholder="Enter mobile number"
                   required
                 />
+              </div>
+
+              {/* Image Upload (Optional) */}
+              <div className="bg-PrimaryColor p-4 rounded-lg">
+                <label className="block text-DarkColor font-medium mb-2 flex items-center">
+                  <MdImage className="mr-2" size={20} />
+                  Profile Image (Optional)
+                </label>
+                {existingImage && !formData.image && (
+                  <div className="mb-4">
+                    <img
+                      src={`${API_CONFIG.BASE_URL}${existingImage}`}
+                      alt="Current Profile"
+                      className="w-24 h-24 object-cover rounded-full mx-auto"
+                    />
+                    <p className="text-sm text-DarkColor text-center mt-2">Current Image</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleImageChange}
+                  className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
+                />
+                {formData.image && (
+                  <p className="mt-2 text-sm text-DarkColor">
+                    Selected: {formData.image.name}
+                  </p>
+                )}
               </div>
 
               {/* Submit Button */}
