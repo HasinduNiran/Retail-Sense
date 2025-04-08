@@ -1,11 +1,10 @@
-// components/Navbar.js
 import React, { useState } from "react";
 import { Link } from "react-scroll";
 import { FaUser, FaShoppingCart } from "react-icons/fa";
 import SignIn from "./auth/SignIn";
 import SignUp from "./auth/SignUp";
 import { useSelector, useDispatch } from "react-redux";
-import { motion, AnimatePresence } from "framer-motion"; // Import Framer Motion for animations
+import { motion, AnimatePresence } from "framer-motion";
 import {
   signOutUserstart,
   signOutUserFailure,
@@ -13,6 +12,7 @@ import {
 } from "../redux/user/userSlice";
 import { NavLink } from "react-router-dom";
 import logo from "./../assets/img/logo-removebg-preview.png";
+import API_CONFIG from "../config/apiConfig.js"; // Import API_CONFIG for base URL
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false); // Auth state
@@ -48,7 +48,7 @@ export default function Navbar() {
       }
       dispatch(signOutUserSuccess(data));
     } catch (error) {
-      dispatch(signOutUserFailure(data.message));
+      dispatch(signOutUserFailure(error.message));
     }
   };
 
@@ -59,7 +59,7 @@ export default function Navbar() {
           <div>
             <NavLink to="/" spy={true} smooth={true} duration={500}>
               <h1 className="text-2xl font-semibold text-ExtraDarkColor cursor-pointer">
-                <img src={logo} className="w-52" />
+                <img src={logo} className="w-52" alt="Logo" />
               </h1>
             </NavLink>
           </div>
@@ -89,9 +89,14 @@ export default function Navbar() {
                 onMouseLeave={() => setShowDropdown(false)}
               >
                 <img
-                  src={currentUser.avatar} // Replace with dynamic source
+                  src={
+                    currentUser.image?.startsWith("http")
+                      ? currentUser.image // Firebase URL
+                      : `${API_CONFIG.BASE_URL}${currentUser.image}` // Backend relative path
+                  }
                   alt="Profile"
-                  className="w-8 h-8 rounded-full cursor-pointer"
+                  className="w-8 h-8 rounded-full cursor-pointer object-cover"
+                  onError={(e) => (e.target.src = "https://via.placeholder.com/32")} // Fallback image
                 />
                 {/* Dropdown Menu */}
                 <AnimatePresence>
