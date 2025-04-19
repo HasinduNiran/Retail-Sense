@@ -25,6 +25,7 @@
     "nodemon": "^3.1.4",
     "openai": "^4.89.0",
     "path": "^0.12.7",
+    "react-draggable": "^4.4.6",
     "react-tabs": "^6.1.0",
     "uuid": "^10.0.0"
   }

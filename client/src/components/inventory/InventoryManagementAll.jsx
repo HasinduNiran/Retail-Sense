@@ -1,14 +1,15 @@
 // React and Router imports
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 // UI Framework imports
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
 
 // Icons
-import { FiArrowLeft, FiEdit, FiTrash2, FiPackage, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiEdit, FiTrash2, FiPackage, FiX, FiMessageSquare, FiSend, FiUser, FiCpu, FiTrendingUp, FiDollarSign, FiShoppingBag, FiBox } from "react-icons/fi";
 import { MdAdd, MdInventory, MdFileDownload } from "react-icons/md";
 
 // PDF Generation
@@ -36,6 +37,20 @@ function InventoryManagementAll() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState([]);
   const [activeTab, setActiveTab] = useState("inventory");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'bot', text: 'Hello! I can help you with inventory information. What would you like to know?' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = React.useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [suggestedQuestions] = useState([
+    "How many items are in stock?",
+    "Which categories have low stock?",
+    "What's the most valuable item?",
+    "Show items from Nike",
+    "Which location has most items?"
+  ]);
 
   // Search and filter logic
   useEffect(() => {
@@ -181,6 +196,12 @@ function InventoryManagementAll() {
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
 
   const handleError = (error) => {
     console.error('Error:', error);
@@ -469,6 +490,237 @@ function InventoryManagementAll() {
   // Recommendations based on current inventory data
   const recommendations = generateRecommendations();
 
+  const handleChatSubmit = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    // Add user message
+    const userMessage = { sender: 'user', text: chatInput };
+    setChatMessages(prev => [...prev, userMessage]);
+    
+    // Show typing indicator
+    setIsTyping(true);
+    
+    // Process the question and generate a response with a more natural delay
+    setTimeout(() => {
+      const botResponse = generateBotResponse(chatInput);
+      setChatMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
+      setIsTyping(false);
+    }, 1000);
+    
+    // Clear input field
+    setChatInput('');
+  };
+
+  // Handle clicking a suggested question
+  const handleSuggestedQuestion = (question) => {
+    setChatInput(question);
+    handleChatSubmit({ preventDefault: () => {} });
+  };
+
+  const generateBotResponse = (question) => {
+    const lowerQuestion = question.toLowerCase();
+    
+    // GENERAL INVENTORY QUERIES
+    if (lowerQuestion.includes('total items') || lowerQuestion.includes('how many items') || 
+        lowerQuestion.match(/^how many (products|inventory items)/)) {
+      return `There are a total of ${inventoryItems.length} items in the inventory.`;
+    }
+    
+    // STOCK STATUS QUERIES
+    if (lowerQuestion.includes('low stock') || lowerQuestion.includes('low on stock')) {
+      const lowStockItems = inventoryItems.filter(item => item.StockStatus === 'low-stock');
+      if (lowStockItems.length === 0) {
+        return "There are no items currently in low stock.";
+      }
+      return `There are ${lowStockItems.length} items in low stock: ${lowStockItems.map(item => item.ItemName).join(', ')}.`;
+    }
+    
+    if (lowerQuestion.includes('out of stock')) {
+      const outOfStockItems = inventoryItems.filter(item => item.StockStatus === 'out-of-stock');
+      if (outOfStockItems.length === 0) {
+        return "There are no items currently out of stock.";
+      }
+      return `There are ${outOfStockItems.length} items out of stock: ${outOfStockItems.map(item => item.ItemName).join(', ')}.`;
+    }
+
+    if (lowerQuestion.includes('in stock') && !lowerQuestion.includes('low') && !lowerQuestion.includes('out')) {
+      const inStockItems = inventoryItems.filter(item => item.StockStatus === 'in-stock');
+      return `There are ${inStockItems.length} items currently in stock.`;
+    }
+    
+    // QUANTITY QUERIES
+    if (lowerQuestion.includes('total quantity')) {
+      const totalQuantity = inventoryItems.reduce((sum, item) => sum + (item.Quantity || 0), 0);
+      return `The total quantity of all items is ${totalQuantity} units.`;
+    }
+    
+    if (lowerQuestion.includes('most stocked') || lowerQuestion.includes('highest quantity')) {
+      const mostStockedItem = [...inventoryItems].sort((a, b) => b.Quantity - a.Quantity)[0];
+      return `The item with the highest quantity is "${mostStockedItem.ItemName}" with ${mostStockedItem.Quantity} units.`;
+    }
+
+    if (lowerQuestion.includes('least stocked') || lowerQuestion.includes('lowest quantity')) {
+      const leastStockedItem = [...inventoryItems].sort((a, b) => a.Quantity - b.Quantity)[0];
+      return `The item with the lowest quantity is "${leastStockedItem.ItemName}" with ${leastStockedItem.Quantity} units.`;
+    }
+    
+    // CATEGORY QUERIES
+    if (lowerQuestion.includes('categories') || lowerQuestion.includes('category list')) {
+      const categories = [...new Set(inventoryItems.map(item => item.Category))];
+      return `Available categories are: ${categories.join(', ')}.`;
+    }
+
+    const categoryMatch = lowerQuestion.match(/items in (.*?) category/);
+    if (categoryMatch || lowerQuestion.includes('category')) {
+      let categoryName;
+      
+      if (categoryMatch) {
+        categoryName = categoryMatch[1];
+      } else {
+        // Extract category name from the question
+        const words = lowerQuestion.split(' ');
+        const categoryIndex = words.findIndex(word => word === 'category');
+        if (categoryIndex > 0) {
+          categoryName = words[categoryIndex - 1];
+        }
+      }
+      
+      if (categoryName) {
+        const categoryItems = inventoryItems.filter(
+          item => item.Category.toLowerCase().includes(categoryName)
+        );
+        
+        if (categoryItems.length === 0) {
+          return `No items found in the "${categoryName}" category.`;
+        }
+        
+        return `There are ${categoryItems.length} items in the "${categoryName}" category: ${categoryItems.map(item => item.ItemName).join(', ')}.`;
+      }
+    }
+
+    // BRAND QUERIES
+    if (lowerQuestion.includes('brands') || lowerQuestion.includes('brand list')) {
+      const brands = [...new Set(inventoryItems.map(item => item.Brand))];
+      return `Available brands are: ${brands.join(', ')}.`;
+    }
+
+    const brandMatch = lowerQuestion.match(/items from (.*?)(\s|$)/);
+    if (brandMatch || (lowerQuestion.includes('brand') && !lowerQuestion.includes('brands'))) {
+      let brandName;
+      
+      if (brandMatch) {
+        brandName = brandMatch[1];
+      } else {
+        // Extract brand name from the question
+        const words = lowerQuestion.split(' ');
+        const brandIndex = words.findIndex(word => word === 'brand');
+        if (brandIndex > 0) {
+          brandName = words[brandIndex - 1];
+        }
+      }
+      
+      if (brandName) {
+        const brandItems = inventoryItems.filter(
+          item => item.Brand.toLowerCase().includes(brandName)
+        );
+        
+        if (brandItems.length === 0) {
+          return `No items found from the "${brandName}" brand.`;
+        }
+        
+        return `There are ${brandItems.length} items from "${brandName}": ${brandItems.map(item => item.ItemName).join(', ')}.`;
+      }
+    }
+    
+    // LOCATION QUERIES
+    if (lowerQuestion.includes('location') || lowerQuestion.includes('where')) {
+      const locations = [...new Set(inventoryItems.map(item => item.Location))];
+      
+      if (lowerQuestion.includes('most items') || lowerQuestion.includes('most products')) {
+        const locationCounts = inventoryItems.reduce((acc, item) => {
+          acc[item.Location] = (acc[item.Location] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const topLocation = Object.entries(locationCounts)
+          .sort((a, b) => b[1] - a[1])[0];
+          
+        return `The location with the most items is "${topLocation[0]}" with ${topLocation[1]} items.`;
+      }
+      
+      return `Items are stored at these locations: ${locations.join(', ')}.`;
+    }
+    
+    // PRICE/VALUE QUERIES (if unitPrice exists)
+    if (lowerQuestion.includes('price') || lowerQuestion.includes('value') || 
+        lowerQuestion.includes('expensive') || lowerQuestion.includes('cheapest')) {
+      
+      const itemsWithPrice = inventoryItems.filter(item => item.unitPrice != null);
+      
+      if (itemsWithPrice.length === 0) {
+        return "I don't have pricing information for the inventory items.";
+      }
+      
+      if (lowerQuestion.includes('most expensive') || lowerQuestion.includes('highest price')) {
+        const mostExpensive = [...itemsWithPrice].sort((a, b) => b.unitPrice - a.unitPrice)[0];
+        return `The most expensive item is "${mostExpensive.ItemName}" at $${mostExpensive.unitPrice}.`;
+      }
+      
+      if (lowerQuestion.includes('cheapest') || lowerQuestion.includes('lowest price')) {
+        const cheapest = [...itemsWithPrice].sort((a, b) => a.unitPrice - b.unitPrice)[0];
+        return `The cheapest item is "${cheapest.ItemName}" at $${cheapest.unitPrice}.`;
+      }
+      
+      if (lowerQuestion.includes('total value')) {
+        const totalValue = itemsWithPrice.reduce(
+          (sum, item) => sum + (item.unitPrice * (item.Quantity || 0)), 0
+        );
+        return `The total inventory value is $${totalValue.toFixed(2)}.`;
+      }
+    }
+    
+    // SPECIFIC ITEM QUERIES - More flexible matching
+    // Try to find any item name in the question
+    const potentialItemMatches = inventoryItems.filter(item => 
+      lowerQuestion.includes(item.ItemName.toLowerCase())
+    );
+    
+    if (potentialItemMatches.length > 0) {
+      // Use the longest matching item name (most specific)
+      const itemMatch = potentialItemMatches.sort((a, b) => 
+        b.ItemName.length - a.ItemName.length
+      )[0];
+      
+      return `Information about "${itemMatch.ItemName}":
+      • Category: ${itemMatch.Category}
+      • Brand: ${itemMatch.Brand}
+      • Quantity: ${itemMatch.Quantity} units
+      • Stock Status: ${itemMatch.StockStatus}
+      • Location: ${itemMatch.Location}
+      • Style: ${itemMatch.Style}
+      • Gender: ${itemMatch.Gender}
+      • Supplier: ${itemMatch.SupplierName}
+      • Reorder Threshold: ${itemMatch.reorderThreshold}`;
+    }
+    
+    // HELP/GUIDANCE QUERY
+    if (lowerQuestion.includes('help') || lowerQuestion.includes('what can you do')) {
+      return `I can answer questions about the inventory such as:
+      • Total number of items
+      • Stock status (in-stock, low-stock, out-of-stock)
+      • Quantity information
+      • Category and brand details
+      • Information about specific items
+      • Location information
+      
+      Try asking me something like "Which items are low on stock?" or "Tell me about Nike products."`;
+    }
+    
+    // Generic response for unrecognized questions
+    return "I'm not sure about that. Try asking about inventory counts, stock status, specific items, categories, or brands. You can type 'help' to see what I can do.";
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -751,6 +1003,146 @@ function InventoryManagementAll() {
           </>
         )}
       </div>
+      
+      {/* Enhanced Chatbot UI */}
+      <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isChatOpen ? 'w-96' : 'w-auto'}`}>
+        {/* Chat toggle button */}
+        <motion.button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center ml-auto"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <FiMessageSquare size={24} />
+        </motion.button>
+        
+        {/* Chat window */}
+        <AnimatePresence>
+          {isChatOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-xl shadow-2xl overflow-hidden mt-4 border border-purple-100"
+            >
+              {/* Chat header */}
+              <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 flex items-center">
+                <FiCpu className="mr-2" size={20} />
+                <h3 className="font-medium">Inventory Assistant</h3>
+              </div>
+              
+              {/* Chat messages */}
+              <div className="h-96 overflow-y-auto p-4 bg-gray-50">
+                <AnimatePresence>
+                  {chatMessages.map((msg, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`mb-4 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {msg.sender === 'bot' && (
+                        <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center mr-2 flex-shrink-0">
+                          <FiCpu className="text-purple-600" />
+                        </div>
+                      )}
+                      
+                      <div
+                        className={`p-3 rounded-2xl max-w-xs ${
+                          msg.sender === 'user'
+                            ? 'bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-br-none shadow-md'
+                            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
+                        }`}
+                      >
+                        {msg.text.split('\n').map((line, i) => (
+                          <p key={i} className={i > 0 ? 'mt-1' : ''}>{line}</p>
+                        ))}
+                      </div>
+                      
+                      {msg.sender === 'user' && (
+                        <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center ml-2 flex-shrink-0">
+                          <FiUser className="text-white" />
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                  
+                  {/* Typing indicator */}
+                  {isTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex mb-4"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center mr-2">
+                        <FiCpu className="text-purple-600" />
+                      </div>
+                      <div className="bg-white border border-gray-200 p-3 rounded-2xl rounded-bl-none">
+                        <div className="flex space-x-1">
+                          <motion.div
+                            animate={{ y: [0, -5, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.7, repeatDelay: 0.1 }}
+                            className="h-2 w-2 rounded-full bg-purple-600"
+                          />
+                          <motion.div
+                            animate={{ y: [0, -5, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.7, delay: 0.2, repeatDelay: 0.1 }}
+                            className="h-2 w-2 rounded-full bg-purple-600"
+                          />
+                          <motion.div
+                            animate={{ y: [0, -5, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.7, delay: 0.4, repeatDelay: 0.1 }}
+                            className="h-2 w-2 rounded-full bg-purple-600"
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div ref={chatEndRef} />
+              </div>
+              
+              {/* Suggested questions */}
+              <div className="p-3 border-t border-gray-100 bg-white">
+                <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((question, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestedQuestion(question)}
+                      className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-100 transition-colors"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Chat input */}
+              <form onSubmit={handleChatSubmit} className="border-t border-gray-100 p-3 flex">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask about inventory..."
+                  className="flex-1 border border-gray-200 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-transparent"
+                />
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-r-lg"
+                >
+                  <FiSend size={20} />
+                </motion.button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
       <InventoryQuantityModal
         isOpen={isModalOpen}
         onClose={() => {
