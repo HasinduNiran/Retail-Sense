@@ -19,6 +19,9 @@ import 'jspdf-autotable';
 import API_CONFIG from "../../config/apiConfig.js";
 import axios from 'axios';
 import InventoryQuantityModal from "./InventoryQuantityModal";
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts';
 
 function InventoryManagementAll() {
   const navigate = useNavigate();
@@ -32,6 +35,7 @@ function InventoryManagementAll() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState([]);
+  const [activeTab, setActiveTab] = useState("inventory");
 
   // Search and filter logic
   useEffect(() => {
@@ -377,6 +381,94 @@ function InventoryManagementAll() {
     doc.save('FashionNexus-Inventory-Report.pdf');
   };
 
+  // Data for charts
+  const stockStatusData = [
+    { name: 'In Stock', value: inventoryItems.filter(item => item.StockStatus === 'in-stock').length },
+    { name: 'Low Stock', value: inventoryItems.filter(item => item.StockStatus === 'low-stock').length },
+    { name: 'Out of Stock', value: inventoryItems.filter(item => item.StockStatus === 'out-of-stock').length },
+  ];
+
+  const categoryData = Object.entries(
+    inventoryItems.reduce((acc, item) => {
+      acc[item.Category] = (acc[item.Category] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value }));
+
+  // Quantity Trends Over Time (assuming inventoryItems have a `createdAt` field)
+  const quantityTrendData = inventoryItems
+    .map(item => ({
+      date: new Date(item.createdAt).toLocaleDateString(),
+      quantity: item.Quantity,
+    }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Top 5 Items by Quantity
+  const topItemsByQuantity = inventoryItems
+    .sort((a, b) => b.Quantity - a.Quantity)
+    .slice(0, 5)
+    .map(item => ({ name: item.ItemName, quantity: item.Quantity }));
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  // Generate item-specific recommendations
+  const generateRecommendations = () => {
+    const recommendations = [];
+
+    // Low stock items
+    const lowStockItems = inventoryItems.filter(
+      item => item.StockStatus === 'low-stock'
+    );
+    if (lowStockItems.length > 0) {
+      recommendations.push(
+        ...lowStockItems.map(
+          item => `Restock "${item.ItemName}" as it is low on stock.`
+        )
+      );
+    }
+
+    // Out-of-stock items
+    const outOfStockItems = inventoryItems.filter(
+      item => item.StockStatus === 'out-of-stock'
+    );
+    if (outOfStockItems.length > 0) {
+      recommendations.push(
+        ...outOfStockItems.map(
+          item => `Replenish "${item.ItemName}" as it is out of stock.`
+        )
+      );
+    }
+
+    // Top 5 items by quantity (to avoid overstocking)
+    const topItemsByQuantity = inventoryItems
+      .sort((a, b) => b.Quantity - a.Quantity)
+      .slice(0, 5);
+    if (topItemsByQuantity.length > 0) {
+      recommendations.push(
+        ...topItemsByQuantity.map(
+          item => `Monitor "${item.ItemName}" to avoid overstocking.`
+        )
+      );
+    }
+
+    // Items with zero or negative quantities
+    const zeroQuantityItems = inventoryItems.filter(
+      item => item.Quantity <= 0
+    );
+    if (zeroQuantityItems.length > 0) {
+      recommendations.push(
+        ...zeroQuantityItems.map(
+          item => `Address "${item.ItemName}" as it has zero or negative quantity.`
+        )
+      );
+    }
+
+    return recommendations;
+  };
+
+  // Recommendations based on current inventory data
+  const recommendations = generateRecommendations();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -385,55 +477,76 @@ function InventoryManagementAll() {
       className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
     >
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-6xl border-2 border-SecondaryColor min-h-[80vh]">
-        <div className="flex items-center justify-between mb-8 border-b-2 border-SecondaryColor pb-4">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate(-1)}
-              className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
-            >
-              <FiArrowLeft size={20} />
-            </button>
-            <h1 className="text-2xl font-bold text-DarkColor flex items-center">
-              <div className="bg-PrimaryColor p-2 rounded-full mr-3">
-                <MdInventory className="text-DarkColor" size={24} />
-              </div>
-              Inventory Management
-            </h1>
-          </div>
-          <div className="flex gap-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 px-4 py-2 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <FiX size={16} />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={generatePDF}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <MdFileDownload className="w-5 h-5" />
-              Generate Report
-            </button>
-            <button
-              onClick={handleAdd}
-              className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
-            >
-              <MdAdd size={20} className="mr-1" />
-              Add New
-            </button>
-          </div>
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={() => setActiveTab("inventory")}
+            className={`px-4 py-2 rounded-lg ${
+              activeTab === "inventory" ? "bg-PrimaryColor text-DarkColor" : "bg-gray-200"
+            }`}
+          >
+            Inventory
+          </button>
+          <button
+            onClick={() => setActiveTab("insights")}
+            className={`px-4 py-2 rounded-lg ${
+              activeTab === "insights" ? "bg-PrimaryColor text-DarkColor" : "bg-gray-200"
+            }`}
+          >
+            Insights
+          </button>
         </div>
+
+        {activeTab === "inventory" && (
+          <div className="flex items-center justify-between mb-8 border-b-2 border-SecondaryColor pb-4">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate(-1)}
+                className="bg-PrimaryColor hover:bg-SecondaryColor text-DarkColor p-2 rounded-full transition-all mr-4"
+              >
+                <FiArrowLeft size={20} />
+              </button>
+              <h1 className="text-2xl font-bold text-DarkColor flex items-center">
+                <div className="bg-PrimaryColor p-2 rounded-full mr-3">
+                  <MdInventory className="text-DarkColor" size={24} />
+                </div>
+                Inventory Management
+              </h1>
+            </div>
+            <div className="flex gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-64 px-4 py-2 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={generatePDF}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <MdFileDownload className="w-5 h-5" />
+                Generate Report
+              </button>
+              <button
+                onClick={handleAdd}
+                className="bg-DarkColor text-white p-2 rounded-full flex items-center hover:opacity-90 transition-all"
+              >
+                <MdAdd size={20} className="mr-1" />
+                Add New
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
@@ -447,91 +560,166 @@ function InventoryManagementAll() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto min-h-[60vh]">
-              <table className="w-full text-left text-DarkColor">
-                <thead className="bg-PrimaryColor text-DarkColor">
-                  <tr>
-                    <th className="p-4 font-semibold">ID</th>
-                    <th className="p-4 font-semibold">Image</th>
-                    <th className="p-4 font-semibold">Item Name</th>
-                    <th className="p-4 font-semibold">Category</th>
-                    <th className="p-4 font-semibold">Quantity</th>
-                    <th className="p-4 font-semibold">Colors</th>
-                    <th className="p-4 font-semibold">Sizes</th>
-                    <th className="p-4 font-semibold">Reorder Threshold</th>
-                    <th className="p-4 font-semibold">Stock Status</th>
-                    <th className="p-4 font-semibold">Location</th>
-                    <th className="p-4 font-semibold">Brand</th>
-                    <th className="p-4 font-semibold">Gender</th>
-                    <th className="p-4 font-semibold">Style</th>
-                    <th className="p-4 font-semibold">Supplier Name</th>
-                    <th className="p-4 font-semibold">Supplier Contact</th>
-                    <th className="p-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.isArray(filteredItems) && filteredItems.length > 0 ? (
-                    filteredItems.map((item) => (
-                      <tr
-                        key={item.inventoryID || item._id}
-                        className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
-                      >
-                        <td className="p-4">{item.inventoryID || item._id}</td>
-                        <td className="p-4">{renderItemImage(item)}</td>
-                        <td className="p-4">{item.ItemName || '-'}</td>
-                        <td className="p-4">{item.Category || '-'}</td>
-                        <td className="p-4">{(item.Quantity || 0).toString()}</td>
-                        <td className="p-4">
-                          {renderColors(item.Colors || item.colors)}
-                        </td>
-                        <td className="p-4">
-                          {renderSizes(item.Sizes || item.sizes)}
-                        </td>
-                        <td className="p-4">{item.reorderThreshold || '-'}</td>
-                        <td className={`p-4 ${getStockStatusClass(item.StockStatus || '-')}`}>
-                          {item.StockStatus || '-'}
-                        </td>
-                        <td className="p-4">{item.Location || '-'}</td>
-                        <td className="p-4">{item.Brand || '-'}</td>
-                        <td className="p-4">{item.Gender || '-'}</td>
-                        <td className="p-4">{item.Style || '-'}</td>
-                        <td className="p-4">{item.SupplierName || '-'}</td>
-                        <td className="p-4">{item.SupplierContact || '-'}</td>
-                        <td className="p-4 flex space-x-2">
-                          <button
-                            onClick={() => handleEdit(item.inventoryID || item._id)}
-                            className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
-                            title="Edit"
-                          >
-                            <FiEdit size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.inventoryID || item._id)}
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
-                            title="Delete"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleManageQuantity(item)}
-                            className="bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-all"
-                            title="Manage Quantity"
-                          >
-                            <FiPackage size={16} />
-                          </button>
+            {activeTab === "inventory" && (
+              <div className="overflow-x-auto min-h-[60vh]">
+                <table className="w-full text-left text-DarkColor">
+                  <thead className="bg-PrimaryColor text-DarkColor">
+                    <tr>
+                      <th className="p-4 font-semibold">ID</th>
+                      <th className="p-4 font-semibold">Image</th>
+                      <th className="p-4 font-semibold">Item Name</th>
+                      <th className="p-4 font-semibold">Category</th>
+                      <th className="p-4 font-semibold">Quantity</th>
+                      <th className="p-4 font-semibold">Colors</th>
+                      <th className="p-4 font-semibold">Sizes</th>
+                      <th className="p-4 font-semibold">Reorder Threshold</th>
+                      <th className="p-4 font-semibold">Stock Status</th>
+                      <th className="p-4 font-semibold">Location</th>
+                      <th className="p-4 font-semibold">Brand</th>
+                      <th className="p-4 font-semibold">Gender</th>
+                      <th className="p-4 font-semibold">Style</th>
+                      <th className="p-4 font-semibold">Supplier Name</th>
+                      <th className="p-4 font-semibold">Supplier Contact</th>
+                      <th className="p-4 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(filteredItems) && filteredItems.length > 0 ? (
+                      filteredItems.map((item) => (
+                        <tr
+                          key={item.inventoryID || item._id}
+                          className="border-b border-SecondaryColor hover:bg-SecondaryColor/20"
+                        >
+                          <td className="p-4">{item.inventoryID || item._id}</td>
+                          <td className="p-4">{renderItemImage(item)}</td>
+                          <td className="p-4">{item.ItemName || '-'}</td>
+                          <td className="p-4">{item.Category || '-'}</td>
+                          <td className="p-4">{(item.Quantity || 0).toString()}</td>
+                          <td className="p-4">
+                            {renderColors(item.Colors || item.colors)}
+                          </td>
+                          <td className="p-4">
+                            {renderSizes(item.Sizes || item.sizes)}
+                          </td>
+                          <td className="p-4">{item.reorderThreshold || '-'}</td>
+                          <td className={`p-4 ${getStockStatusClass(item.StockStatus || '-')}`}>
+                            {item.StockStatus || '-'}
+                          </td>
+                          <td className="p-4">{item.Location || '-'}</td>
+                          <td className="p-4">{item.Brand || '-'}</td>
+                          <td className="p-4">{item.Gender || '-'}</td>
+                          <td className="p-4">{item.Style || '-'}</td>
+                          <td className="p-4">{item.SupplierName || '-'}</td>
+                          <td className="p-4">{item.SupplierContact || '-'}</td>
+                          <td className="p-4 flex space-x-2">
+                            <button
+                              onClick={() => handleEdit(item.inventoryID || item._id)}
+                              className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all"
+                              title="Edit"
+                            >
+                              <FiEdit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.inventoryID || item._id)}
+                              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                              title="Delete"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleManageQuantity(item)}
+                              className="bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-all"
+                              title="Manage Quantity"
+                            >
+                              <FiPackage size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="16" className="p-4 text-center text-gray-500">
+                          No inventory items found
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="16" className="p-4 text-center text-gray-500">
-                        No inventory items found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === "insights" && (
+              <div className="mt-8">
+                <h2 className="text-2xl font-bold text-DarkColor mb-6">Inventory Insights</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-lg font-semibold mb-4">Stock Status Distribution</h3>
+                    <PieChart width={400} height={300}>
+                      <Pie
+                        data={stockStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {stockStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-lg font-semibold mb-4">Category Distribution</h3>
+                    <BarChart width={400} height={300} data={categoryData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="#8884d8" />
+                    </BarChart>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-lg font-semibold mb-4">Quantity Trends Over Time</h3>
+                    <LineChart width={400} height={300} data={quantityTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="quantity" stroke="#8884d8" />
+                    </LineChart>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-lg font-semibold mb-4">Top 5 Items by Quantity</h3>
+                    <BarChart width={400} height={300} data={topItemsByQuantity}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="quantity" fill="#8884d8" />
+                    </BarChart>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-4">Recommendations</h3>
+                  <ul className="list-disc pl-6">
+                    {recommendations.map((rec, index) => (
+                      <li key={index}>{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
 
             {totalPages > 1 && (
               <div className="flex justify-between items-center mt-4">
