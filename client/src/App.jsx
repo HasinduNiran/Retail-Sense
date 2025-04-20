@@ -7,6 +7,7 @@ import FashionItem from "./pages/order/FashionItem";
 import Cart from "./pages/order/Cart";
 import Checkout from "./pages/order/Checkout";
 import MyOrders from "./pages/order/Myorders";
+import MyOrder1 from "./pages/order/MyOrder1";
 import Profile from "./pages/Profile";
 import PrivateCus from "./components/private/PrivateCus";
 import CustomizePage from "./pages/customize/CustomizePage";
@@ -59,6 +60,7 @@ export default function App() {
         <Route element={<PrivateCus />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/my-orders" element={<MyOrder1 />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />{" "}
           <Route path="/customize" element={<CustomizePage />} />
