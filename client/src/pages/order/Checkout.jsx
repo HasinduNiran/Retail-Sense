@@ -13,7 +13,7 @@ axios.defaults.baseURL = 'http://localhost:3000';
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { items, userId, total } = location.state || {};
+  const { items, userId, total, promoCode } = location.state || {};
 
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -173,6 +173,17 @@ const Checkout = () => {
     try {
       console.log("Sending order data:", orderData);
       const response = await axios.post("/api/orders/add", orderData);
+      
+      // Update promotion usage count if promo code was used
+      if (promoCode) {
+        try {
+          await axios.post("/api/promotions/usage", { promoCode });
+        } catch (error) {
+          console.error("Error updating promotion usage:", error);
+          // Don't block the order completion if promotion update fails
+        }
+      }
+
       localStorage.removeItem("cart");
       setLoading(false);
       Swal.fire("Success", `Order placed successfully! Order ID: ${response.data.orderId}`, "success").then(() => {

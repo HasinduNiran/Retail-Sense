@@ -56,7 +56,12 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0,
-    // Could be calculated from items in a pre-save hook
+  },
+
+  // Flag to indicate if the total has a discount applied
+  hasDiscount: {
+    type: Boolean,
+    default: false
   },
 
   // Customer information for delivery
@@ -154,10 +159,19 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save hook to calculate total if needed
+// Modify pre-save hook to handle discounts
 orderSchema.pre('save', function(next) {
   if (this.isModified('items')) {
-    this.total = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedTotal = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // If the provided total is less than calculated total, it likely has a discount
+    if (this.total < calculatedTotal) {
+      this.hasDiscount = true;
+    } else {
+      // If no discount, use the calculated total to ensure accuracy
+      this.total = calculatedTotal;
+      this.hasDiscount = false;
+    }
   }
   next();
 });

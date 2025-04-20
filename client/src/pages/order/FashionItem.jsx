@@ -224,7 +224,7 @@ const FashionItem = () => {
         itemId: id,
         title: fashionItem.ItemName,
         img: getImageUrl(fashionItem.image),
-        price: fashionItem.finalPrice || fashionItem.unitPrice,
+        price: fashionItem.unitPrice,
         quantity,
         size: selectedSize,
         color: selectedColor,

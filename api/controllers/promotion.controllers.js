@@ -81,7 +81,73 @@ export const deletePromotion = async (req, res) => {
     }
 };
 
+// Get promotion by promo code
+export const getPromotionByCode = async (req, res) => {
+    try {
+        const { code } = req.params;
+        const promotion = await Promotion.findOne({ 
+            promoCode: { $regex: new RegExp('^' + code + '$', 'i') }, // Case-insensitive match
+            isActive: true,
+            validUntil: { $gt: new Date() }
+        });
+
+        if (!promotion) {
+            return res.status(404).json({ success: false, message: 'Invalid or expired promotion code' });
+        }
+
+        // Check if usage limit is reached
+        if (promotion.usageLimit !== null && promotion.usageCount >= promotion.usageLimit) {
+            return res.status(400).json({ success: false, message: 'Promotion code usage limit reached' });
+        }
+
+
+
+        res.status(200).json({ success: true, data: promotion, message: 'Promotion found successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message, message: 'Error retrieving promotion' });
+    }
+};
+
 // Check promotion discount application on a product
+// Update promotion usage count
+export const updatePromotionUsage = async (req, res) => {
+    try {
+        const { promoCode } = req.body;
+        
+        if (!promoCode) {
+            return res.status(400).json({ success: false, message: 'Promotion code is required' });
+        }
+
+        const promotion = await Promotion.findOne({ 
+            promoCode: { $regex: new RegExp('^' + promoCode + '$', 'i') },
+            isActive: true
+        });
+
+        if (!promotion) {
+            return res.status(404).json({ success: false, message: 'Promotion not found' });
+        }
+
+        if (promotion.usageLimit !== null && promotion.usageCount >= promotion.usageLimit) {
+            return res.status(400).json({ success: false, message: 'Promotion usage limit reached' });
+        }
+
+        promotion.usageCount += 1;
+        await promotion.save();
+
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Promotion usage count updated',
+            usageCount: promotion.usageCount
+        });
+    } catch (error) {
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Error updating promotion usage',
+            error: error.message 
+        });
+    }
+};
+
 export const checkPromotionDiscount = async (req, res) => {
     try {
         const { promotionID, productID } = req.params;
