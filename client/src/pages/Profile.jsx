@@ -32,6 +32,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import API_CONFIG from "../config/apiConfig.js";
 import MyOrder1 from "../pages/order/Myorder1.jsx";
+import Onefeedback from "../pages/feedback/Onefeedback.jsx"; // Import the Onefeedback component
 
 export default function Dashboard() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -42,9 +43,8 @@ export default function Dashboard() {
   const [fileUploadError, setFileUploadError] = useState(false);
   const [formData, setFormData] = useState({});
   const [updateSuccess, setUpdateSuccess] = useState(false);
-  const [activeSection, setActiveSection] = useState("profile"); // Default to profile
+  const [activeSection, setActiveSection] = useState("profile");
 
-  // Initialize form data with current user values
   useEffect(() => {
     if (currentUser) {
       setFormData({
@@ -57,7 +57,6 @@ export default function Dashboard() {
     }
   }, [currentUser]);
 
-  // Handle file upload to Firebase Storage
   useEffect(() => {
     if (file) {
       handleFileUpload(file);
@@ -180,7 +179,6 @@ export default function Dashboard() {
     });
   };
 
-  // Sidebar navigation items
   const navItems = [
     { id: "profile", label: "Customer Profile", icon: <FaUser /> },
     { id: "orders", label: "Orders", icon: <FaShoppingBag /> },
@@ -200,7 +198,6 @@ export default function Dashboard() {
           transition={{ duration: 0.5 }}
           className="w-64 bg-white shadow-lg rounded-r-3xl overflow-hidden"
         >
-          {/* Profile Image Section */}
           <div className="relative">
             <div className="h-24 bg-gradient-to-r from-SecondaryColor to-DarkColor" />
             <div className="flex justify-center">
@@ -253,7 +250,6 @@ export default function Dashboard() {
             </p>
             <p className="text-center text-sm text-gray-500 mb-6">{currentUser.email}</p>
 
-            {/* Navigation Buttons */}
             <ul className="space-y-2 pb-8">
               {navItems.map((item) => (
                 <motion.li
@@ -402,29 +398,20 @@ export default function Dashboard() {
                   transition={{ duration: 0.3 }}
                   className="w-full"
                 >
-                  {/* Replaced placeholder content with the actual MyOrders component */}
                   <MyOrder1 />
                 </motion.div>
               )}
 
-              {activeSection === "feedbacks" && (
+              {activeSection === "feedbacks" && ( // Note: Match the navItems id
                 <motion.div
                   key="feedbacks"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
-                  className="min-h-96 flex flex-col items-center justify-center"
+                  className="w-full"
                 >
-                  <div className="text-DarkColor text-5xl mb-4">
-                    <FaComment />
-                  </div>
-                  <h1 className="text-3xl font-bold text-center mb-3 text-DarkColor">
-                    Feedbacks
-                  </h1>
-                  <p className="text-center text-gray-500 max-w-md">
-                    Share your thoughts about our products and services. Your feedback helps us improve.
-                  </p>
+                  <Onefeedback />
                 </motion.div>
               )}
 

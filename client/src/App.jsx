@@ -7,7 +7,7 @@ import FashionItem from "./pages/order/FashionItem";
 import Cart from "./pages/order/Cart";
 import Checkout from "./pages/order/Checkout";
 import MyOrders from "./pages/order/Myorders";
-import MyOrder1 from "./pages/order/MyOrder1";
+import MyOrder1 from "./pages/order/Myorder1";
 import Profile from "./pages/Profile";
 import PrivateCus from "./components/private/PrivateCus";
 import CustomizePage from "./pages/customize/CustomizePage";
@@ -83,7 +83,7 @@ export default function App() {
 
         <Route path="/createfeedback" element={<Createfeedback />}/>
         <Route path="/allfeedback" element={<ReadAllFeedback />}/>
-        <Route path="/feedback/:id" element={<Onefeedback />}/>
+        <Route path="/feedback" element={<Onefeedback />}/>
         <Route path="/editfeedback/:id" element={<EditFeedback />}/>
 
       </Routes>
