@@ -119,7 +119,7 @@ const MyOrders = () => {
   return (
     <div className="bg-PrimaryColor/30 min-h-screen">
    
-      <div className="p-6 w-full lg:w-3/4 mx-auto pt-24">
+      <div className="p-6 w-full lg:w-3/4 mx-auto pt-2">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-DarkColor">My Orders</h1>
           <div className="flex-1 max-w-md ml-4">
