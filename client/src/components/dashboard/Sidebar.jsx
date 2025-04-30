@@ -62,7 +62,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     },
     {
       name: "Feedbacks",
-      path: "/allfeedback",
+      path: "/allfeedbacks",
       icon: <FaChartLine />,
     },
     { name: "Profile", path: "/manager/profile", icon: <FaUserCircle /> },

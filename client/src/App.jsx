@@ -35,10 +35,11 @@ import Oneuser from "./pages/usermanagement/Oneuser";
 
 import Createfeedback from "./pages/feedback/Createfeedback";
 // import ReadAllfeedback from "./pages/feedback/ReadAllfeedback";
- import ReadAllFeedback from "./components/dashboard/ReadAllfeedback";
+ import FeedbackManagement from "./components/dashboard/FeedbackManagement";
 
  import Onefeedback from "./pages/feedback/Onefeedback";
  import EditFeedback from "./pages/feedback/EditFeedback";
+ import ReadAllFeedback from "./pages/feedback/ReadAllfeedback";
 
 export default function App() {
   return (
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/allfeedback" element={<ReadAllFeedback />}/>
         <Route path="/feedback" element={<Onefeedback />}/>
         <Route path="/editfeedback/:id" element={<EditFeedback />}/>
+        <Route path="/allfeedbacks" element={<FeedbackManagement/>}/>
 
       </Routes>
     </Router>
