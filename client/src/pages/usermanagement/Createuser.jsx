@@ -1,29 +1,26 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Import navigate
 import { motion } from "framer-motion";
 import { FiArrowLeft } from "react-icons/fi";
-import { MdPersonAdd } from "react-icons/md";
-import { BsPerson, BsEnvelope, BsLock, BsHouse, BsPhone, BsImage } from "react-icons/bs";
+import { MdPersonAdd } from "react-icons/md"; // Icon for user creation
+import { BsPerson, BsEnvelope, BsLock, BsHouse, BsPhone } from "react-icons/bs";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
-import API_CONFIG from "../../config/apiConfig.js";
+import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
 
 function CreateUser() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Initialize navigate
   const [formData, setFormData] = useState({
     UserName: "",
     email: "",
     password: "",
     address: "",
     mobile: "",
-    image: null,
   });
-  const [imagePreview, setImagePreview] = useState(null); // For previewing selected image
-  const [uploadedImage, setUploadedImage] = useState(null); // For displaying uploaded image
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Handle text input changes
+  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -32,30 +29,13 @@ function CreateUser() {
     }));
   };
 
-  // Handle file input change
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setFormData((prev) => ({
-      ...prev,
-      image: file || null,
-    }));
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result); // Set preview URL
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImagePreview(null);
-    }
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Basic client-side validation
     if (!/^\d{10}$/.test(formData.mobile)) {
       setError("Mobile number must be 10 digits");
       setLoading(false);
@@ -75,29 +55,27 @@ function CreateUser() {
     }
 
     try {
-      const data = new FormData();
-      data.append("UserName", formData.UserName);
-      data.append("email", formData.email);
-      data.append("password", formData.password);
-      data.append("mobile", Number(formData.mobile));
-      if (formData.address) data.append("address", formData.address);
-      if (formData.image) data.append("image", formData.image);
+      const userData = {
+        UserName: formData.UserName,
+        email: formData.email,
+        password: formData.password,
+        address: formData.address || undefined, // Optional field
+        mobile: Number(formData.mobile),
+      };
 
-      const url = `${API_CONFIG.BASE_URL}/api/users`;
+      const url = `${API_CONFIG.BASE_URL}/api/users`; // Adjust endpoint as needed
       const response = await fetch(url, {
         method: "POST",
-        body: data,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to create user");
-      }
-
-      // Set uploaded image URL from response
-      if (result.data.image) {
-        setUploadedImage(`${API_CONFIG.BASE_URL}/${result.data.image}`);
+        throw new Error(result.error || result.message || "Failed to create user");
       }
 
       Swal.fire({
@@ -106,7 +84,7 @@ function CreateUser() {
         text: "User created successfully!",
         confirmButtonColor: "#89198f",
       }).then(() => {
-        navigate("/"); // Or stay to show the image
+        navigate("/"); // Navigate to home page after successful creation
       });
     } catch (err) {
       Swal.fire({
@@ -129,6 +107,7 @@ function CreateUser() {
       className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
     >
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor">
+        {/* Header */}
         <div className="flex items-center mb-8 border-b-2 border-SecondaryColor pb-4">
           <button
             onClick={() => navigate(-1)}
@@ -144,13 +123,15 @@ function CreateUser() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
               {error}
             </div>
           )}
 
+          {/* UserName */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsPerson className="mr-2" size={20} />
@@ -167,6 +148,7 @@ function CreateUser() {
             />
           </div>
 
+          {/* Email */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsEnvelope className="mr-2" size={20} />
@@ -183,6 +165,7 @@ function CreateUser() {
             />
           </div>
 
+          {/* Password */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsLock className="mr-2" size={20} />
@@ -199,6 +182,7 @@ function CreateUser() {
             />
           </div>
 
+          {/* Address */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsHouse className="mr-2" size={20} />
@@ -214,6 +198,7 @@ function CreateUser() {
             />
           </div>
 
+          {/* Mobile */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsPhone className="mr-2" size={20} />
@@ -230,33 +215,7 @@ function CreateUser() {
             />
           </div>
 
-          <div className="bg-PrimaryColor p-4 rounded-lg">
-            <label className="block text-DarkColor font-medium mb-2 flex items-center">
-              <BsImage className="mr-2" size={20} />
-              Profile Image (Optional)
-            </label>
-            <input
-              type="file"
-              name="image"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-            />
-            {imagePreview && (
-              <div className="mt-2">
-                <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg" />
-              </div>
-            )}
-          </div>
-
-          {/* Display uploaded image after creation (optional) */}
-          {uploadedImage && (
-            <div className="bg-PrimaryColor p-4 rounded-lg">
-              <label className="block text-DarkColor font-medium mb-2">Uploaded Image:</label>
-              <img src={uploadedImage} alt="Uploaded" className="w-32 h-32 object-cover rounded-lg" />
-            </div>
-          )}
-
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
