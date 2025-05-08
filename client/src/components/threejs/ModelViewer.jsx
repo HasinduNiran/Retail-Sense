@@ -5,7 +5,12 @@ import ClothingModel from './ClothingModel';
 import FallbackBox from './FallbackBox';
 import ModelFallback from './ModelFallback';
 
-const ModelViewer = ({ textureUrl, modelPath, clothingType = 'tshirt' }) => {
+const ModelViewer = ({ 
+  textureUrl, 
+  backTextureUrl, // Optional back texture
+  modelPath, 
+  clothingType = 'tshirt' 
+}) => {
   const [modelError, setModelError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -65,7 +70,8 @@ const ModelViewer = ({ textureUrl, modelPath, clothingType = 'tshirt' }) => {
             />
           ) : (
             <ClothingModel 
-              textureUrl={textureUrl} 
+              frontTextureUrl={textureUrl}
+              backTextureUrl={backTextureUrl || textureUrl} // Use front texture for back if not provided
               modelPath={modelPath}
               autoRotate={true}
             />
