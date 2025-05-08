@@ -96,7 +96,7 @@ export default function Navbar() {
                   }
                   alt="Profile"
                   className="w-8 h-8 rounded-full cursor-pointer object-cover"
-                  onError={(e) => (e.target.src = "https://via.placeholder.com/32")} // Fallback image
+                  onError={(e) => (e.target.src = "https://ui-avatars.com/api/?name=User&background=random")} // Reliable fallback avatar
                 />
                 {/* Dropdown Menu */}
                 <AnimatePresence>

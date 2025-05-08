@@ -221,7 +221,7 @@ export default function Dashboard() {
                         (currentUser.image?.startsWith("http")
                           ? currentUser.image
                           : `${API_CONFIG.BASE_URL}${currentUser.image}`) ||
-                        "https://via.placeholder.com/96"
+                        "https://ui-avatars.com/api/?name=User&size=96&background=random"
                       }
                       alt="Profile"
                       className="rounded-full h-full w-full object-cover cursor-pointer border-2 border-SecondaryColor"

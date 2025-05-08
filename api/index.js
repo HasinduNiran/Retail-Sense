@@ -6,6 +6,7 @@ import UserRoutes from './routes/user.routes.js';
 import FeedbackRoutes from './routes/feedback.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
+import designRoutes from './routes/designs.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -38,7 +39,7 @@ app.use('/uploads', express.static(uploadsDir, {
 
 // Ensure uploads directory exists
 const ensureUploadsDir = () => {
-    const dirs = ['inventory', 'promotions','users'];
+    const dirs = ['inventory', 'promotions', 'users', 'designs', 'models'];
     dirs.forEach(dir => {
         const fullPath = path.join(uploadsDir, dir);
         if (!fs.existsSync(fullPath)) {
@@ -56,6 +57,7 @@ app.use('/api/users', UserRoutes);
 app.use('/api/feedbacks', FeedbackRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/designs', designRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

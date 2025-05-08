@@ -1,6 +1,12 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy, useTransition } from "react";
 import Navbar from "../../components/Navbar";
+import { saveDesign } from "../../services/designService";
+import { toast } from "react-toastify";
+
+// Lazy load the 3D model viewer to improve initial page load performance
+const ModelViewer = lazy(() => import("../../components/threejs/ModelViewer"));
+const ModelFallback = lazy(() => import("../../components/threejs/ModelFallback"));
 
 const CustomizePage = () => {
   const [prompt, setPrompt] = useState("");
@@ -9,6 +15,9 @@ const CustomizePage = () => {
   const [generationId, setGenerationId] = useState(null);
   const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [viewMode, setViewMode] = useState("2d"); // "2d" or "3d"
+  const [clothingType, setClothingType] = useState("tshirt"); // Default clothing type
+  const [isPending, startTransition] = useTransition(); // Add useTransition for handling 3D view switching
 
   const samplePrompts = [
     "A casual red t-shirt with minimalist graphic design",
@@ -77,7 +86,7 @@ const CustomizePage = () => {
         },
         body: JSON.stringify({
           modelId: "6b645e3a-d64f-4341-a6d8-7a3690fbf042", // Fashion-oriented model ID
-          prompt: `T-shirt fashion design: ${prompt}. High quality professional t-shirt design with detailed fabric texture and stitching details.`,
+          prompt: `${clothingType} fashion design: ${prompt}. High quality professional ${clothingType} design with detailed fabric texture and stitching details.`,
           num_images: 1,
           width: 1024,
           height: 1024,
@@ -104,6 +113,60 @@ const CustomizePage = () => {
     }
   };
 
+  // Save design to backend
+  const handleSaveDesign = async () => {
+    try {
+      if (!generatedImage) {
+        toast.error("Please generate a design first");
+        return;
+      }
+      
+      // Show loading state
+      setIsLoading(true);
+      
+      const designData = {
+        imageUrl: generatedImage,
+        clothingType: clothingType,
+        prompt: prompt,
+        previewType: viewMode
+      };
+      
+      const response = await saveDesign(designData);
+      
+      // Reset loading state
+      setIsLoading(false);
+      
+      if (response.success) {
+        toast.success("Design saved successfully!");
+      } else {
+        toast.error("Failed to save design");
+      }
+    } catch (error) {
+      setIsLoading(false);
+      
+      if (error.message === "Authentication required") {
+        toast.error("Please login to save your design");
+      } else {
+        toast.error("Error saving design: " + error.message);
+      }
+      
+      console.error("Error saving design:", error);
+    }
+  };
+
+  // Modified handler to use startTransition when switching to 3D view
+  const handleViewModeChange = (mode) => {
+    if (mode === "3d") {
+      // Wrap the state update in startTransition to prevent UI freezes
+      startTransition(() => {
+        setViewMode(mode);
+      });
+    } else {
+      // For switching back to 2D, we don't need startTransition
+      setViewMode(mode);
+    }
+  };
+
   // Cancel any ongoing polling if component unmounts
   useEffect(() => {
     return () => {
@@ -127,7 +190,7 @@ const CustomizePage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-DarkColor">Design Your Dream T-Shirt</h1>
+            <h1 className="text-xl font-bold text-DarkColor">Design Your Dream {clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}</h1>
           </div>
         </motion.div>
 
@@ -139,15 +202,32 @@ const CustomizePage = () => {
             className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor"
           >
             <h2 className="text-2xl font-semibold text-DarkColor mb-4">
-              Describe Your T-Shirt
+              Describe Your {clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}
             </h2>
+            
+            {/* Clothing Type Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Choose Clothing Type
+              </label>
+              <select
+                value={clothingType}
+                onChange={(e) => setClothingType(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-SecondaryColor focus:border-transparent"
+              >
+                <option value="tshirt">T-Shirt</option>
+                <option value="dress">Dress</option>
+                <option value="pants">Pants</option>
+                <option value="jacket">Jacket</option>
+              </select>
+            </div>
             
             {/* Prompt Input */}
             <div className="space-y-4">
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe your dream t-shirt in detail... (e.g., style, color, graphic design, fit)"
+                placeholder={`Describe your dream ${clothingType} in detail... (e.g., style, color, graphic design, fit)`}
                 className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-SecondaryColor focus:border-transparent resize-none"
               />
               
@@ -192,9 +272,38 @@ const CustomizePage = () => {
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-2xl shadow-xl p-6 border-2 border-SecondaryColor"
           >
-            <h2 className="text-2xl font-semibold text-DarkColor mb-4">
-              Your Design Preview
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold text-DarkColor">
+                Your Design Preview
+              </h2>
+              
+              {/* View mode toggle */}
+              {generatedImage && !isLoading && (
+                <div className="flex space-x-2 bg-gray-100 p-1 rounded-full">
+                  <button
+                    onClick={() => handleViewModeChange("2d")}
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      viewMode === "2d" 
+                        ? "bg-SecondaryColor text-white"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    2D View
+                  </button>
+                  <button
+                    onClick={() => handleViewModeChange("3d")}
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      viewMode === "3d"
+                        ? "bg-SecondaryColor text-white" 
+                        : "text-gray-600"
+                    }`}
+                    disabled={isPending} // Disable the button while transition is pending
+                  >
+                    {isPending ? "Loading 3D..." : "3D View"}
+                  </button>
+                </div>
+              )}
+            </div>
             
             <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               {isLoading ? (
@@ -204,13 +313,23 @@ const CustomizePage = () => {
                   {error && <p className="text-red-500">{error}</p>}
                 </div>
               ) : generatedImage ? (
-                <motion.img
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  src={generatedImage}
-                  alt="Generated t-shirt design"
-                  className="w-full h-full object-cover"
-                />
+                viewMode === "2d" ? (
+                  <motion.img
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    src={generatedImage}
+                    alt="Generated clothing design"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Suspense fallback={<ModelFallback />}>
+                    <ModelViewer 
+                      textureUrl={generatedImage} 
+                      modelPath={`/models/${clothingType}.glb`}
+                      clothingType={clothingType}
+                    />
+                  </Suspense>
+                )
               ) : (
                 <div className="text-center p-8">
                   <div className="text-gray-400 mb-2">
@@ -232,7 +351,10 @@ const CustomizePage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-4 space-y-3"
               >
-                <button className="w-full py-2 px-4 bg-white border border-SecondaryColor text-DarkColor rounded-lg hover:bg-PrimaryColor transition-colors duration-200">
+                <button 
+                  onClick={handleSaveDesign}
+                  className="w-full py-2 px-4 bg-white border border-SecondaryColor text-DarkColor rounded-lg hover:bg-PrimaryColor transition-colors duration-200"
+                >
                   Save Design
                 </button>
                 <button className="w-full py-2 px-4 bg-SecondaryColor text-white rounded-lg hover:bg-DarkColor transition-colors duration-200">

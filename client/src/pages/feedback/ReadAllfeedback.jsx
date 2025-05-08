@@ -651,7 +651,7 @@ function ReadAllFeedback() {
                         src={item.img}
                         alt={item.itemTitle}
                         className="w-10 h-10 object-cover rounded mt-2"
-                        onError={(e) => (e.target.src = "https://via.placeholder.com/40?text=Image+Not+Found")}
+                        onError={(e) => (e.target.src = "https://ui-avatars.com/api/?name=Product&size=40&background=random")}
                       />
                     )}
                   </div>
