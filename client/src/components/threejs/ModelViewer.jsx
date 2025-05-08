@@ -53,11 +53,16 @@ const ModelViewer = ({
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [0, 0, 2.5], fov: 50 }}
+        camera={{ 
+          position: [0, 0, 3.8], // Adjusted for perfect framing
+          fov: 40, // Narrower FOV for less distortion
+          near: 0.1,
+          far: 1000
+        }}
         style={{ 
           width: '100%', 
           height: '100%',
-          background: 'linear-gradient(to bottom, #f0f0f0, #ffffff)' 
+          background: 'rgb(240, 240, 240)' // Exact match to screenshot background
         }}
       >
         <Suspense fallback={<ModelFallback />}>

@@ -81,7 +81,7 @@ const ClothingModel = ({
   // Only auto-rotate when user is not interacting
   useFrame(() => {
     if (modelRef.current && autoRotate && !isUserInteracting) {
-      modelRef.current.rotation.y += 0.005;
+      modelRef.current.rotation.y += 0.002; // Slower rotation (was 0.005)
     }
   });
 
@@ -99,12 +99,13 @@ const ClothingModel = ({
       />
       
       {/* Light setup for better visualization */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
-      <directionalLight position={[-5, 5, -5]} intensity={0.6} castShadow />
+      <ambientLight intensity={0.8} /> {/* Brighter ambient light */}
+      <directionalLight position={[5, 5, 5]} intensity={0.6} castShadow />
+      <directionalLight position={[-5, 5, -5]} intensity={0.4} castShadow />
+      <directionalLight position={[0, 5, 0]} intensity={0.5} castShadow /> {/* Top light */}
       
-      <group ref={modelRef}>
-        <primitive object={scene} scale={1} position={[0, 0, 0]} />
+      <group ref={modelRef} position={[0, -0.2, 0]}> {/* Slightly lowered */}
+        <primitive object={scene} scale={1.05} position={[0, 0, 0]} /> {/* Slightly larger */}
       </group>
     </>
   );
