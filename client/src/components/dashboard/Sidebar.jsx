@@ -10,6 +10,7 @@ import {
   FaChartLine,
   FaUserCircle,
   FaTimes,
+  FaTshirt // Added new icon for Custom Orders
 } from "react-icons/fa";
 import { IoIosLogOut } from "react-icons/io";
 import { useDispatch } from "react-redux";
@@ -54,6 +55,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       name: "Orders",
       path: "/manager/order-management",
       icon: <FaClipboardList />,
+    },
+    {
+      name: "Custom Orders", // Added new menu item
+      path: "/custom-orders",
+      icon: <FaTshirt />,
     },
     {
       name: "Discount & Offers",
