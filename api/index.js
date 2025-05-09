@@ -7,6 +7,7 @@ import FeedbackRoutes from './routes/feedback.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import designRoutes from './routes/designs.js';
+import customOrderRoutes from './routes/customOrder.routes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -58,6 +59,7 @@ app.use('/api/feedbacks', FeedbackRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/designs', designRoutes);
+app.use('/api/custom-orders', customOrderRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

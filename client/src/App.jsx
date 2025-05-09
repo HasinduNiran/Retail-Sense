@@ -12,34 +12,30 @@ import Profile from "./pages/Profile";
 import PrivateCus from "./components/private/PrivateCus";
 import CustomizePage from "./pages/customize/CustomizePage";
 
-// Promotion Route
-
-
-
-
 import UpdateInventory from "./pages/inventory/UpdateInventory";
 import DeleteInventory from "./pages/inventory/DeleteInventory";
 import InventoryManagementAll from "./components/inventory/InventoryManagementAll";
 import CreateInventory from "./pages/inventory/CreateInventory";
 import RetrievedInventoryTable from './components/inventory/RetrievedInventoryTable';
 
-
 import AddOffer from "./components/discount&offer/AddOffer";
 import PromotionReport from "./components/discount&offer/PromotionReport";
 import UpdateOffer from "./components/discount&offer/UpdateOffer";
 
 import CreateUser from "./pages/usermanagement/Createuser";
- import UpdateUser from "./pages/usermanagement/EditUser";
- //import AllUsers from "./pages/usermanagement/AllUsers";
+import UpdateUser from "./pages/usermanagement/EditUser";
+//import AllUsers from "./pages/usermanagement/AllUsers";
 import Oneuser from "./pages/usermanagement/Oneuser";
 
 import Createfeedback from "./pages/feedback/Createfeedback";
 // import ReadAllfeedback from "./pages/feedback/ReadAllfeedback";
- import FeedbackManagement from "./components/dashboard/FeedbackManagement";
+import FeedbackManagement from "./components/dashboard/FeedbackManagement";
 
- import Onefeedback from "./pages/feedback/Onefeedback";
- import EditFeedback from "./pages/feedback/EditFeedback";
- import ReadAllFeedback from "./pages/feedback/ReadAllfeedback";
+import Onefeedback from "./pages/feedback/Onefeedback";
+import EditFeedback from "./pages/feedback/EditFeedback";
+import ReadAllFeedback from "./pages/feedback/ReadAllfeedback";
+
+import CustomOrdersManagement from "./components/dashboard/CustomOrdersManagement";
 
 export default function App() {
   return (
@@ -55,9 +51,14 @@ export default function App() {
         {/* Dashboard Route */}
         <Route >
           <Route path="/manager/*" element={<DashboardLayout />} />
+          {/* The DashboardLayout component now handles the /manager/custom-orders route */}
           <Route path="/update/:id" element={<UpdateInventory />} />
           <Route path="/update/:id" element={<DeleteInventory />} />
         </Route>
+
+        {/* Custom Orders Direct Route (optional, if needed) */}
+        <Route path="/custom-orders-management" element={<CustomOrdersManagement />} />
+
         <Route element={<PrivateCus />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/my-orders" element={<MyOrders />} />
@@ -74,11 +75,12 @@ export default function App() {
         <Route path="/add-inventory" element={<CreateInventory />} />
         <Route path="/edit-inventory/:id" element={<UpdateInventory />} />
         <Route path="/retrieved-inventory" element={<RetrievedInventoryTable />} />
+        <Route path="/custom-orders" element={<CustomOrdersManagement />} />
         {/* <Route path="/update/:id" element={<UpdateOffer />}></Route> */}
         {/* <Route path="/update/:id* " element={<DeleteOffer />}></Route> */}
 
         <Route path="/adduser" element={<CreateUser />}/>
-         <Route path="/edituser/:id" element={<UpdateUser />}/>
+        <Route path="/edituser/:id" element={<UpdateUser />}/>
         {/* <Route path="/allusers" element={<AllUsers />}/> */}
         <Route path="/user/:id" element={<Oneuser />}/> 
 

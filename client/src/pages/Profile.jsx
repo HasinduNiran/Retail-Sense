@@ -34,6 +34,7 @@ import API_CONFIG from "../config/apiConfig.js";
 import MyOrder1 from "../pages/order/Myorder1.jsx";
 import Onefeedback from "../pages/feedback/Onefeedback.jsx";
 import { getUserDesigns } from "../services/designService";
+import { getUserCustomOrders } from "../services/customOrderService";
 import { toast } from "react-toastify";
 
 export default function Dashboard() {
@@ -49,6 +50,9 @@ export default function Dashboard() {
   const [designs, setDesigns] = useState([]);
   const [designsLoading, setDesignsLoading] = useState(false);
   const [designsError, setDesignsError] = useState(null);
+  const [customOrders, setCustomOrders] = useState([]);
+  const [customOrdersLoading, setCustomOrdersLoading] = useState(false);
+  const [customOrdersError, setCustomOrdersError] = useState(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -68,9 +72,10 @@ export default function Dashboard() {
     }
   }, [file]);
 
-  // Fetch designs when the customized section is active
+  // Fetch designs and custom orders when their sections are active
   useEffect(() => {
     if (activeSection === "customized" && currentUser?._id) {
+      // Fetch designs
       const fetchDesigns = async () => {
         setDesignsLoading(true);
         setDesignsError(null);
@@ -84,7 +89,24 @@ export default function Dashboard() {
           setDesignsLoading(false);
         }
       };
+      
+      // Fetch custom orders
+      const fetchCustomOrders = async () => {
+        setCustomOrdersLoading(true);
+        setCustomOrdersError(null);
+        try {
+          const ordersData = await getUserCustomOrders(currentUser._id);
+          setCustomOrders(ordersData);
+        } catch (error) {
+          setCustomOrdersError(error.response?.data?.message || error.message);
+          toast.error("Failed to load custom orders: " + (error.response?.data?.message || error.message));
+        } finally {
+          setCustomOrdersLoading(false);
+        }
+      };
+      
       fetchDesigns();
+      fetchCustomOrders();
     }
   }, [activeSection, currentUser]);
 
@@ -202,6 +224,18 @@ export default function Dashboard() {
         }
       }
     });
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch(status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-indigo-100 text-indigo-800';
+      case 'delivered': return 'bg-teal-100 text-teal-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const navItems = [
@@ -452,22 +486,114 @@ export default function Dashboard() {
                   <h1 className="text-3xl font-bold text-center mb-8 text-DarkColor">
                     Customized Clothes
                   </h1>
+
+                  {/* Custom Orders Section */}
+                  <div className="mb-10">
+                    <h2 className="text-2xl font-semibold mb-4 text-DarkColor">My Custom Orders</h2>
+                    {customOrdersLoading ? (
+                      <div className="flex justify-center items-center h-32">
+                        <FaSpinner className="animate-spin text-SecondaryColor text-4xl" />
+                      </div>
+                    ) : customOrdersError ? (
+                      <div className="text-center text-red-600 bg-red-50 p-4 rounded-xl">
+                        <p>{customOrdersError}</p>
+                      </div>
+                    ) : customOrders.length === 0 ? (
+                      <div className="bg-gray-50 rounded-xl p-8 text-center">
+                        <p className="text-gray-500">You haven't placed any custom orders yet.</p>
+                        <button 
+                          onClick={() => navigate('/customize')}
+                          className="mt-4 px-6 py-2 bg-SecondaryColor text-white rounded-lg hover:bg-DarkColor transition-colors"
+                        >
+                          Start Customizing
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4">
+                        {customOrders.map((order) => (
+                          <div 
+                            key={order._id}
+                            className="bg-gray-50 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 flex flex-col md:flex-row gap-4"
+                          >
+                            <div className="md:w-1/4">
+                              <img 
+                                src={order.imageUrl} 
+                                alt={order.clothingType} 
+                                className="w-full h-40 object-cover rounded-lg"
+                              />
+                            </div>
+                            <div className="flex-1 flex flex-col">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-DarkColor capitalize">
+                                    Custom {order.clothingType}
+                                  </h3>
+                                  <p className="text-sm text-gray-500">
+                                    {new Date(order.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                </span>
+                              </div>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <p><span className="font-medium">Size:</span> {order.size}</p>
+                                <p><span className="font-medium">Qty:</span> {order.quantity}</p>
+                                <p><span className="font-medium">Price:</span> ${order.price?.toFixed(2)}</p>
+                                {order.convertedToOrder && (
+                                  <p className="text-green-600 font-medium">
+                                    Converted to Order
+                                  </p>
+                                )}
+                              </div>
+                              {order.status === 'rejected' && (
+                                <p className="mt-2 text-red-600 text-sm">
+                                  <span className="font-medium">Reason:</span> {order.rejectionReason || 'No reason provided'}
+                                </p>
+                              )}
+                              <div className="mt-auto pt-4">
+                                {order.status === 'pending' && (
+                                  <div className="text-gray-500 text-sm italic">
+                                    Your order is being reviewed by our team.
+                                  </div>
+                                )}
+                                {order.status === 'approved' && order.orderId && (
+                                  <button className="text-SecondaryColor hover:underline text-sm font-medium">
+                                    View Order #{order.orderId}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Saved Designs Section */}
+                  <h2 className="text-2xl font-semibold mb-4 text-DarkColor">My Saved Designs</h2>
                   {designsLoading ? (
-                    <div className="flex justify-center items-center min-h-96">
+                    <div className="flex justify-center items-center h-32">
                       <FaSpinner className="animate-spin text-SecondaryColor text-4xl" />
                     </div>
                   ) : designsError ? (
                     <div className="text-center text-red-600 bg-red-50 p-4 rounded-xl">
-                      <FaCheckCircle className="inline mr-2" /> {designsError}
+                      <p>{designsError}</p>
                     </div>
                   ) : designs.length === 0 ? (
-                    <div className="min-h-96 flex flex-col items-center justify-center">
-                      <div className="text-DarkColor text-5xl mb-4">
+                    <div className="bg-gray-50 rounded-xl p-8 text-center">
+                      <div className="text-DarkColor text-5xl mb-4 flex justify-center">
                         <FaTshirt />
                       </div>
-                      <p className="text-center text-gray-500 max-w-md">
+                      <p className="text-center text-gray-500 max-w-md mx-auto">
                         No custom designs yet. Create your unique clothing items in the Customize section!
                       </p>
+                      <button 
+                        onClick={() => navigate('/customize')}
+                        className="mt-4 px-6 py-2 bg-SecondaryColor text-white rounded-lg hover:bg-DarkColor transition-colors"
+                      >
+                        Create Design
+                      </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -487,9 +613,15 @@ export default function Dashboard() {
                           <h3 className="text-lg font-semibold text-DarkColor capitalize">
                             {design.clothingType}
                           </h3>
-                          <p className="text-sm text-gray-600 line-clamp-2">
+                          <p className="text-sm text-gray-600 line-clamp-2 mb-4">
                             {design.prompt}
                           </p>
+                          <button 
+                            onClick={() => navigate('/customize')}
+                            className="w-full py-2 bg-SecondaryColor text-white rounded-lg hover:bg-DarkColor transition-colors"
+                          >
+                            Order This Design
+                          </button>
                         </motion.div>
                       ))}
                     </div>

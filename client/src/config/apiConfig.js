@@ -60,6 +60,17 @@ const API_CONFIG = {
       UPDATE: (id) => `/api/orders/${id}`,
       DEFAULT: '/api/orders',
       toString: function() { return this.ALL || this.DEFAULT || '/api/orders'; }
+    },
+    CUSTOM_ORDERS: {
+      ALL: '/api/custom-orders',
+      CREATE: '/api/custom-orders/create',
+      USER: (userId) => `/api/custom-orders/user/${userId}`,
+      SINGLE: (id) => `/api/custom-orders/${id}`,
+      APPROVE: (id) => `/api/custom-orders/${id}/approve`,
+      REJECT: (id) => `/api/custom-orders/${id}/reject`,
+      DELETE: (id) => `/api/custom-orders/${id}`,
+      DEFAULT: '/api/custom-orders',
+      toString: function() { return this.ALL || this.DEFAULT || '/api/custom-orders'; }
     }
   },
   // Helper method to safely get any endpoint, with fallbacks
