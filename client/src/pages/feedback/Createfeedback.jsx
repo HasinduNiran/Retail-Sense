@@ -13,10 +13,29 @@ const FeedbackPopup = ({ order, onClose, onSubmit }) => {
   const [rating, setRating] = useState(0);
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mobileError, setMobileError] = useState(null);
+
+  // Validate mobile number when the popup opens
+  useEffect(() => {
+    if (order.customerInfo.mobile) {
+      if (!/^0\d{9}$/.test(order.customerInfo.mobile)) {
+        setMobileError("Mobile number must start with 0 and be exactly 10 digits");
+      } else {
+        setMobileError(null);
+      }
+    } else {
+      setMobileError("Mobile number is missing");
+    }
+  }, [order.customerInfo.mobile]);
 
   const handleSubmit = async () => {
     if (rating === 0) {
       Swal.fire("Error", "Please provide a rating", "error");
+      return;
+    }
+
+    if (mobileError) {
+      Swal.fire("Error", mobileError, "error");
       return;
     }
 
@@ -25,7 +44,7 @@ const FeedbackPopup = ({ order, onClose, onSubmit }) => {
       await axios.post(API_CONFIG.ENDPOINTS.FEEDBACK.CREATE, {
         userId: order.userId,
         orderId: order._id,
-        items: order.items, // Send the entire items array
+        items: order.items,
         rating,
         comment: description,
       });
@@ -48,6 +67,14 @@ const FeedbackPopup = ({ order, onClose, onSubmit }) => {
           <div>
             <label className="text-gray-600 font-medium">Username:</label>
             <p className="text-DarkColor">{order.customerInfo.name}</p>
+          </div>
+          <div>
+            <label className="text-gray-600 font-medium">Mobile:</label>
+            {mobileError ? (
+              <p className="text-red-500 text-sm">{mobileError}</p>
+            ) : (
+              <p className="text-DarkColor">{order.customerInfo.mobile}</p>
+            )}
           </div>
           <div>
             <label className="text-gray-600 font-medium">Order ID:</label>
@@ -104,9 +131,9 @@ const FeedbackPopup = ({ order, onClose, onSubmit }) => {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!mobileError || rating === 0}
             className={`px-4 py-2 bg-SecondaryColor text-white rounded-lg hover:bg-SecondaryColor/80 transition-colors ${
-              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+              isSubmitting || !!mobileError || rating === 0 ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             {isSubmitting ? "Submitting..." : "Submit"}
@@ -202,7 +229,7 @@ const MyOrders = () => {
       <div className="p-6 w-full lg:w-3/4 mx-auto pt-24">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-DarkColor">My Orders</h1>
-        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <input
@@ -215,14 +242,6 @@ const MyOrders = () => {
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-SecondaryColor" />
               </div>
             </div>
-            {/* {feedbacks.length > 0 && (
-              <button
-                onClick={handleViewFeedback}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <FaEye /> View My Feedback
-              </button>
-            )} */}
           </div>
         </div>
 

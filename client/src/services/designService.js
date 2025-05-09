@@ -5,56 +5,53 @@ const DESIGN_API = `${API_URL}/api/designs`;
 
 /**
  * Save a design to the database
- * @param {Object} designData - Design data (imageUrl, clothingType, prompt, previewType)
+ * @param {Object} designData - Design data (imageUrl, clothingType, prompt, previewType, userId)
  * @returns {Promise} - API response
  */
 export const saveDesign = async (designData) => {
   try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
     const response = await axios.post(DESIGN_API, designData, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       }
     });
     
     return response.data;
   } catch (error) {
-    console.error('Error saving design:', error);
+    console.error('Error saving design:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
     throw error;
   }
 };
 
 /**
- * Get all designs for the current user
+ * Get designs for a specific user
+ * @param {string} userId - The ID of the user
  * @returns {Promise} - API response with designs array
  */
-export const getUserDesigns = async () => {
+export const getUserDesigns = async (userId) => {
   try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
     const response = await axios.get(DESIGN_API, {
+      params: { userId },
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json',
       }
     });
-    
     return response.data;
   } catch (error) {
-    console.error('Error fetching designs:', error);
+    console.error('Error fetching designs:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
     throw error;
   }
 };
 
+/* Commented out functions not currently needed
 /**
  * Get a specific design by ID
  * @param {string} designId - The ID of the design
@@ -62,18 +59,7 @@ export const getUserDesigns = async () => {
  */
 export const getDesignById = async (designId) => {
   try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
-    const response = await axios.get(`${DESIGN_API}/${designId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
+    const response = await axios.get(`${DESIGN_API}/${designId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching design:', error);
@@ -88,21 +74,10 @@ export const getDesignById = async (designId) => {
  */
 export const deleteDesign = async (designId) => {
   try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
-    const response = await axios.delete(`${DESIGN_API}/${designId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
+    const response = await axios.delete(`${DESIGN_API}/${designId}`);
     return response.data;
   } catch (error) {
     console.error('Error deleting design:', error);
     throw error;
   }
-}; 
+};

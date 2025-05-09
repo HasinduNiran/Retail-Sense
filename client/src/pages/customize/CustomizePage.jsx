@@ -1,23 +1,24 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, Suspense, lazy, useTransition } from "react";
+import { useSelector } from "react-redux"; // Added for currentUser
 import Navbar from "../../components/Navbar";
 import { saveDesign } from "../../services/designService";
 import { toast } from "react-toastify";
 
-// Lazy load the 3D model viewer to improve initial page load performance
 const ModelViewer = lazy(() => import("../../components/threejs/ModelViewer"));
 const ModelFallback = lazy(() => import("../../components/threejs/ModelFallback"));
 
 const CustomizePage = () => {
+  const { currentUser } = useSelector((state) => state.user); // Get currentUser
   const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generationId, setGenerationId] = useState(null);
   const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
-  const [viewMode, setViewMode] = useState("2d"); // "2d" or "3d"
-  const [clothingType, setClothingType] = useState("tshirt"); // Default clothing type
-  const [isPending, startTransition] = useTransition(); // Add useTransition for handling 3D view switching
+  const [viewMode, setViewMode] = useState("2d");
+  const [clothingType, setClothingType] = useState("tshirt");
+  const [isPending, startTransition] = useTransition();
 
   const samplePrompts = [
     "A casual red t-shirt with minimalist graphic design",
@@ -26,10 +27,8 @@ const CustomizePage = () => {
     "Vintage-inspired band t-shirt in faded navy blue"
   ];
 
-  // Leonardo AI API key - should be in an environment variable in production
-  const API_KEY =  "e5c50229-779c-4b33-b9b0-b5d013fb3318";
+  const API_KEY = "e5c50229-779c-4b33-b9b0-b5d013fb3318";
 
-  // Function to check generation status
   const checkGenerationStatus = async (genId) => {
     try {
       const response = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${genId}`, {
@@ -47,7 +46,6 @@ const CustomizePage = () => {
       const data = await response.json();
       
       if (data.generations_by_pk.status === 'COMPLETE') {
-        // Generation is complete, get the first image URL
         if (data.generations_by_pk.generated_images && data.generations_by_pk.generated_images.length > 0) {
           setGeneratedImage(data.generations_by_pk.generated_images[0].url);
           setIsLoading(false);
@@ -60,7 +58,6 @@ const CustomizePage = () => {
         setError('Image generation failed');
         setIsLoading(false);
       } else {
-        // Still processing, check again after a delay
         setStatusMessage(`Status: ${data.generations_by_pk.status}...`);
         setTimeout(() => checkGenerationStatus(genId), 3000);
       }
@@ -85,7 +82,7 @@ const CustomizePage = () => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          modelId: "6b645e3a-d64f-4341-a6d8-7a3690fbf042", // Fashion-oriented model ID
+          modelId: "6b645e3a-d64f-4341-a6d8-7a3690fbf042",
           prompt: `${clothingType} fashion design: ${prompt}. High quality professional ${clothingType} design with detailed fabric texture and stitching details.`,
           num_images: 1,
           width: 1024,
@@ -104,7 +101,6 @@ const CustomizePage = () => {
       setGenerationId(generationId);
       setStatusMessage("Generation in progress. Please wait...");
       
-      // Wait a few seconds before checking the status
       setTimeout(() => checkGenerationStatus(generationId), 3000);
       
     } catch (err) {
@@ -113,65 +109,57 @@ const CustomizePage = () => {
     }
   };
 
-  // Save design to backend
   const handleSaveDesign = async () => {
     try {
       if (!generatedImage) {
         toast.error("Please generate a design first");
         return;
       }
+      if (!currentUser?._id) {
+        toast.error("You must be logged in to save a design");
+        return;
+      }
       
-      // Show loading state
       setIsLoading(true);
       
       const designData = {
         imageUrl: generatedImage,
         clothingType: clothingType,
         prompt: prompt,
-        previewType: viewMode
+        previewType: viewMode,
+        userId: currentUser._id, // Added userId
       };
       
+      console.log('Saving design:', designData); // Debug log
       const response = await saveDesign(designData);
       
-      // Reset loading state
       setIsLoading(false);
       
-      if (response.success) {
+      if (response.message === "Design saved successfully") {
         toast.success("Design saved successfully!");
       } else {
-        toast.error("Failed to save design");
+        toast.error("Failed to save design: " + (response.message || "Unknown error"));
       }
     } catch (error) {
       setIsLoading(false);
-      
-      if (error.message === "Authentication required") {
-        toast.error("Please login to save your design");
-      } else {
-        toast.error("Error saving design: " + error.message);
-      }
-      
+      toast.error("Error saving design: " + (error.response?.data?.message || error.message));
       console.error("Error saving design:", error);
     }
   };
 
-  // Modified handler to use startTransition when switching to 3D view
   const handleViewModeChange = (mode) => {
     if (mode === "3d") {
-      // Wrap the state update in startTransition to prevent UI freezes
       startTransition(() => {
         setViewMode(mode);
       });
     } else {
-      // For switching back to 2D, we don't need startTransition
       setViewMode(mode);
     }
   };
 
-  // Cancel any ongoing polling if component unmounts
   useEffect(() => {
     return () => {
-      // This is a cleanup function
-      // Any pending timeouts will be cleared when component unmounts
+      // Cleanup function
     };
   }, []);
 
@@ -195,7 +183,6 @@ const CustomizePage = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Prompt Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -205,7 +192,6 @@ const CustomizePage = () => {
               Describe Your {clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}
             </h2>
             
-            {/* Clothing Type Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Choose Clothing Type
@@ -222,7 +208,6 @@ const CustomizePage = () => {
               </select>
             </div>
             
-            {/* Prompt Input */}
             <div className="space-y-4">
               <textarea
                 value={prompt}
@@ -231,7 +216,6 @@ const CustomizePage = () => {
                 className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-SecondaryColor focus:border-transparent resize-none"
               />
               
-              {/* Sample Prompts */}
               <div>
                 <h3 className="text-sm font-medium text-DarkColor mb-2">
                   Need inspiration? Try these:
@@ -249,7 +233,6 @@ const CustomizePage = () => {
                 </div>
               </div>
 
-              {/* Generate Button */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -266,7 +249,6 @@ const CustomizePage = () => {
             </div>
           </motion.div>
 
-          {/* Display Section */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -277,7 +259,6 @@ const CustomizePage = () => {
                 Your Design Preview
               </h2>
               
-              {/* View mode toggle */}
               {generatedImage && !isLoading && (
                 <div className="flex space-x-2 bg-gray-100 p-1 rounded-full">
                   <button
@@ -297,7 +278,7 @@ const CustomizePage = () => {
                         ? "bg-SecondaryColor text-white" 
                         : "text-gray-600"
                     }`}
-                    disabled={isPending} // Disable the button while transition is pending
+                    disabled={isPending}
                   >
                     {isPending ? "Loading 3D..." : "3D View"}
                   </button>

@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import navigate
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowLeft } from "react-icons/fi";
-import { MdPersonAdd } from "react-icons/md"; // Icon for user creation
+import { MdPersonAdd } from "react-icons/md";
 import { BsPerson, BsEnvelope, BsLock, BsHouse, BsPhone } from "react-icons/bs";
 import ClipLoader from "react-spinners/ClipLoader";
 import Swal from "sweetalert2";
-import API_CONFIG from "../../config/apiConfig.js"; // Adjust path as needed
+import API_CONFIG from "../../config/apiConfig.js";
 
 function CreateUser() {
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     UserName: "",
     email: "",
@@ -19,38 +19,67 @@ function CreateUser() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [mobileError, setMobileError] = useState(null); // Added for mobile validation
 
-  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "mobile") {
+      // Allow only digits and limit to 10
+      if (/^\d{0,10}$/.test(value)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+        setMobileError(value.length === 10 ? null : "Mobile number must be exactly 10 digits");
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMobileError(null);
 
-    // Basic client-side validation
+    // Validate mobile number
     if (!/^\d{10}$/.test(formData.mobile)) {
-      setError("Mobile number must be 10 digits");
+      setMobileError("Mobile number must be exactly 10 digits");
       setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Input",
+        text: "Mobile number must be exactly 10 digits",
+        confirmButtonColor: "#89198f",
+      });
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
       setError("Please enter a valid email address");
       setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Input",
+        text: "Please enter a valid email address",
+        confirmButtonColor: "#89198f",
+      });
       return;
     }
 
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters long");
       setLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Input",
+        text: "Password must be at least 6 characters long",
+        confirmButtonColor: "#89198f",
+      });
       return;
     }
 
@@ -59,11 +88,11 @@ function CreateUser() {
         UserName: formData.UserName,
         email: formData.email,
         password: formData.password,
-        address: formData.address || undefined, // Optional field
-        mobile: Number(formData.mobile),
+        address: formData.address || undefined,
+        mobile: formData.mobile, // Send as string to preserve leading zeros
       };
 
-      const url = `${API_CONFIG.BASE_URL}/api/users`; // Adjust endpoint as needed
+      const url = `${API_CONFIG.BASE_URL}/api/users`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -84,7 +113,7 @@ function CreateUser() {
         text: "User created successfully!",
         confirmButtonColor: "#89198f",
       }).then(() => {
-        navigate("/"); // Navigate to home page after successful creation
+        navigate("/");
       });
     } catch (err) {
       Swal.fire({
@@ -107,7 +136,6 @@ function CreateUser() {
       className="min-h-screen bg-PrimaryColor p-6 flex items-center justify-center"
     >
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg border-2 border-SecondaryColor">
-        {/* Header */}
         <div className="flex items-center mb-8 border-b-2 border-SecondaryColor pb-4">
           <button
             onClick={() => navigate(-1)}
@@ -123,7 +151,6 @@ function CreateUser() {
           </h1>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
@@ -131,7 +158,6 @@ function CreateUser() {
             </div>
           )}
 
-          {/* UserName */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsPerson className="mr-2" size={20} />
@@ -148,7 +174,6 @@ function CreateUser() {
             />
           </div>
 
-          {/* Email */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsEnvelope className="mr-2" size={20} />
@@ -165,7 +190,6 @@ function CreateUser() {
             />
           </div>
 
-          {/* Password */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsLock className="mr-2" size={20} />
@@ -182,7 +206,6 @@ function CreateUser() {
             />
           </div>
 
-          {/* Address */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsHouse className="mr-2" size={20} />
@@ -198,27 +221,32 @@ function CreateUser() {
             />
           </div>
 
-          {/* Mobile */}
           <div className="bg-PrimaryColor p-4 rounded-lg">
             <label className="block text-DarkColor font-medium mb-2 flex items-center">
               <BsPhone className="mr-2" size={20} />
               Mobile
             </label>
             <input
-              type="number"
+              type="tel"
               name="mobile"
               value={formData.mobile}
               onChange={handleChange}
-              className="w-full p-3 border-2 border-SecondaryColor rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor"
-              placeholder="Enter mobile number"
+              pattern="\d{10}"
+              maxLength="10"
+              className={`w-full p-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-DarkColor ${
+                mobileError ? "border-red-400" : "border-SecondaryColor"
+              }`}
+              placeholder="Enter 10-digit mobile number"
               required
             />
+            {mobileError && (
+              <p className="text-red-500 text-sm mt-1">{mobileError}</p>
+            )}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !!mobileError}
             className="w-full bg-DarkColor text-white p-4 rounded-lg flex items-center justify-center hover:opacity-90 transition-all font-bold shadow-lg disabled:opacity-50"
           >
             {loading ? (

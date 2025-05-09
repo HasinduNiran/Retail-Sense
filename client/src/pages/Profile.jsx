@@ -32,7 +32,9 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import API_CONFIG from "../config/apiConfig.js";
 import MyOrder1 from "../pages/order/Myorder1.jsx";
-import Onefeedback from "../pages/feedback/Onefeedback.jsx"; // Import the Onefeedback component
+import Onefeedback from "../pages/feedback/Onefeedback.jsx";
+import { getUserDesigns } from "../services/designService";
+import { toast } from "react-toastify";
 
 export default function Dashboard() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -44,6 +46,9 @@ export default function Dashboard() {
   const [formData, setFormData] = useState({});
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
+  const [designs, setDesigns] = useState([]);
+  const [designsLoading, setDesignsLoading] = useState(false);
+  const [designsError, setDesignsError] = useState(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -62,6 +67,26 @@ export default function Dashboard() {
       handleFileUpload(file);
     }
   }, [file]);
+
+  // Fetch designs when the customized section is active
+  useEffect(() => {
+    if (activeSection === "customized" && currentUser?._id) {
+      const fetchDesigns = async () => {
+        setDesignsLoading(true);
+        setDesignsError(null);
+        try {
+          const designsData = await getUserDesigns(currentUser._id);
+          setDesigns(designsData);
+        } catch (error) {
+          setDesignsError(error.response?.data?.message || error.message);
+          toast.error("Failed to load designs: " + (error.response?.data?.message || error.message));
+        } finally {
+          setDesignsLoading(false);
+        }
+      };
+      fetchDesigns();
+    }
+  }, [activeSection, currentUser]);
 
   const handleFileUpload = (file) => {
     const storage = getStorage(app);
@@ -402,7 +427,7 @@ export default function Dashboard() {
                 </motion.div>
               )}
 
-              {activeSection === "feedbacks" && ( // Note: Match the navItems id
+              {activeSection === "feedbacks" && (
                 <motion.div
                   key="feedbacks"
                   initial={{ opacity: 0, y: 20 }}
@@ -422,17 +447,53 @@ export default function Dashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
-                  className="min-h-96 flex flex-col items-center justify-center"
+                  className="w-full"
                 >
-                  <div className="text-DarkColor text-5xl mb-4">
-                    <FaTshirt />
-                  </div>
-                  <h1 className="text-3xl font-bold text-center mb-3 text-DarkColor">
+                  <h1 className="text-3xl font-bold text-center mb-8 text-DarkColor">
                     Customized Clothes
                   </h1>
-                  <p className="text-center text-gray-500 max-w-md">
-                    Design your unique clothing items. Express your personality through custom fashion.
-                  </p>
+                  {designsLoading ? (
+                    <div className="flex justify-center items-center min-h-96">
+                      <FaSpinner className="animate-spin text-SecondaryColor text-4xl" />
+                    </div>
+                  ) : designsError ? (
+                    <div className="text-center text-red-600 bg-red-50 p-4 rounded-xl">
+                      <FaCheckCircle className="inline mr-2" /> {designsError}
+                    </div>
+                  ) : designs.length === 0 ? (
+                    <div className="min-h-96 flex flex-col items-center justify-center">
+                      <div className="text-DarkColor text-5xl mb-4">
+                        <FaTshirt />
+                      </div>
+                      <p className="text-center text-gray-500 max-w-md">
+                        No custom designs yet. Create your unique clothing items in the Customize section!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {designs.map((design) => (
+                        <motion.div
+                          key={design._id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className="bg-gray-50 rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow"
+                        >
+                          <img
+                            src={design.imageUrl}
+                            alt={design.clothingType}
+                            className="w-full h-48 object-cover rounded-lg mb-4"
+                          />
+                          <h3 className="text-lg font-semibold text-DarkColor capitalize">
+                            {design.clothingType}
+                          </h3>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {design.prompt}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
