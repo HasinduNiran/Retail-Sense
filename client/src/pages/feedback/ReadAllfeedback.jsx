@@ -518,14 +518,14 @@ function ReadAllFeedback() {
   const monthlyTrendData = {
     labels: getAllMonthsInRange(),
     datasets: [
-      {
-        label: "Feedback Count",
-        data: getAllMonthsInRange().map(month => monthlyFeedbackTrends[month]?.total || 0),
-        borderColor: "rgb(147, 51, 234)",
-        backgroundColor: "rgba(147, 51, 234, 0.2)",
-        tension: 0.4,
-        fill: true,
-      },
+      // {
+      //   label: "Feedback Count",
+      //   data: getAllMonthsInRange().map(month => monthlyFeedbackTrends[month]?.total || 0),
+      //   borderColor: "rgb(147, 51, 234)",
+      //   backgroundColor: "rgba(147, 51, 234, 0.2)",
+      //   tension: 0.4,
+      //   fill: true,
+      // },
       {
         label: "Average Rating",
         data: getAllMonthsInRange().map(month => monthlyFeedbackTrends[month]?.averageRating || 0),
@@ -687,18 +687,18 @@ function ReadAllFeedback() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow">
+          {/* <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold">Total Feedback</h3>
             <p className="text-2xl">{feedbackStats.total}</p>
-          </div>
+          </div> */}
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold">Average Rating</h3>
             <p className="text-2xl">{feedbackStats.averageRating}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          {/* <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold">With Comments</h3>
             <p className="text-2xl">{feedbackStats.withComments}</p>
-          </div>
+          </div> */}
         </div>
 
         {/* Search and Download */}
