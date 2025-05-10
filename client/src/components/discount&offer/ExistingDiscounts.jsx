@@ -306,7 +306,7 @@ const DiscountTable = () => {
                       <td className="p-4">{item.ItemName}</td>
                       <td className="p-4">{item.Category}</td>
                       <td className="p-4">{item.retrievedQuantity}</td>
-                      <td className="p-4">{item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}</td>
+                      <td className="p-4">{item.unitPrice ? `Rs.${item.unitPrice.toFixed(2)}` : '-'}</td>
                       <td className="p-4">
                         {promo ? (
                           <div className="text-green-600">
