@@ -981,9 +981,7 @@ const OrderManagement = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+              
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1028,18 +1026,8 @@ const OrderManagement = () => {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                      <button
-                        onClick={() => openCard(order)}
-                        className="text-purple-600 hover:text-purple-900"
-                      >
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => deleteOrder(order._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                     
+                      
                     </td>
                   </tr>
                 ))}
