@@ -234,7 +234,8 @@ const RetrievedInventoryTable = () => {
   const handleRetrieveSuccess = () => {
     fetchRetrievedInventory();
     setIsModalOpen(false);
-    navigate('/manager/inventory-management');
+    // navigate('/manager/inventory-management');
+     navigate('/manager/inventory-management', { state: { activeTab: 'retrieved' } });
   };
 
   if (loading) {

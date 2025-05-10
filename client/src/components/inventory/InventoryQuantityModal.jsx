@@ -70,7 +70,7 @@ const InventoryQuantityModal = ({ isOpen, onClose, item, onQuantityUpdate }) => 
         setQuantity('');
         onClose();
         if (action === 'retrieve') {
-          navigate('/retrieved-inventory');
+        navigate('/manager/inventory-management', { state: { activeTab: 'retrieved' } });
         }
       });
     } catch (error) {
