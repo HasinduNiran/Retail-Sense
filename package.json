@@ -28,5 +28,8 @@
     "react-draggable": "^4.4.6",
     "react-tabs": "^6.1.0",
     "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.1"
   }
 }
